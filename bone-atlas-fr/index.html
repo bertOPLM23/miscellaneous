@@ -1,0 +1,1893 @@
+<!DOCTYPE html><html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style rel="stylesheet" type="text/css">@charset "utf-8";
+
+:root { --bg: #0a0f14; --bg-lift: #121b23; --panel: rgba(13, 20, 27, 0.86); --line: #223140; --line-strong: #33475a; --fg: #e8edf0; --muted: #8d9ca9; --bone: #ecdec2; --scan: #6fd0e8; --ok: #5fd39a; --bad: #ff7a6b; --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif; --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; --r: 10px; color-scheme: dark; }
+
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--f-display); font-size: 14px; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+#stage { position: fixed; inset: 0px; background: radial-gradient(120% 80% at 50% 38%, #16222c 0%, #0e151b 45%, var(--bg) 78%); }
+
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+
+#stage.hovering canvas { cursor: pointer; }
+
+#leader { position: fixed; inset: 0px; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+
+#leader line { stroke: var(--scan); stroke-width: 1.5; }
+
+#leader circle { fill: var(--scan); }
+
+.callout { position: fixed; left: 0px; top: 0px; pointer-events: none; white-space: nowrap; background: var(--panel); border: 1px solid var(--scan); border-radius: 6px; color: var(--bone); font-weight: 700; font-stretch: 106%; font-size: 14px; padding: 5px 10px; }
+
+.ui { position: fixed; inset: 0px; padding-block: calc(env(safe-area-inset-top, 0px) + 14px) calc(env(safe-area-inset-bottom, 0px) + 14px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); pointer-events: none; display: grid; grid-template-columns: minmax(248px, 1fr) minmax(0px, 560px) minmax(300px, 1fr); grid-template-rows: auto minmax(0px, 1fr) auto; gap: 12px; }
+
+.ui > * { pointer-events: auto; }
+
+@media (max-width: 1180px) {
+  .brand .sub, .home .wordmark { display: none; }
+}
+
+.brand { grid-area: 1 / 1; align-self: start; display: grid; gap: 5px; min-width: 0px; text-shadow: rgba(5, 8, 11, 0.85) 0px 1px 10px; }
+
+.lockup { display: flex; align-items: center; gap: 11px; min-width: 0px; }
+
+.home { display: inline-flex; align-items: center; gap: 7px; color: var(--bone); text-decoration: none; flex: 0 0 auto; border-radius: 4px; }
+
+.home .logo-mark { height: 21px; width: auto; color: var(--scan); flex: 0 0 auto; transition: filter 0.15s; }
+
+.home .wordmark { font-family: "Montserrat", var(--f-display); font-weight: 800; font-size: 14.5px; letter-spacing: 0.02em; line-height: 1; }
+
+.home:hover .logo-mark { filter: brightness(1.2) drop-shadow(rgba(111, 208, 232, 0.45) 0px 0px 6px); }
+
+.home:hover .wordmark { color: var(--fg); }
+
+.lockup .divider { width: 1px; height: 18px; background: var(--line-strong); flex: 0 0 auto; }
+
+.brand .mark { font-weight: 800; font-stretch: 125%; letter-spacing: -0.01em; font-size: 20px; color: var(--bone); line-height: 1; white-space: nowrap; }
+
+.brand .mark span { color: var(--scan); }
+
+.brand .sub { color: var(--muted); font-size: 12.5px; font-stretch: 90%; }
+
+.prompt { grid-area: 1 / 2 / 3; place-self: start center; width: 100%; box-sizing: border-box; background: var(--panel); backdrop-filter: blur(10px); border: 1px solid var(--line-strong); border-radius: var(--r); padding: 12px 18px; display: grid; gap: 4px; text-align: center; position: relative; }
+
+.prompt::before { content: ""; position: absolute; top: 9px; left: 12px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--line-strong); }
+
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--scan); }
+
+.pname { font-weight: 750; font-stretch: 112%; font-size: clamp(22px, 2.6vw, 34px); line-height: 1.1; color: var(--bone); white-space: normal; overflow: hidden; text-wrap-style: balance; }
+
+.pmeta { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.ptip { font-size: 12.5px; line-height: 1.45; color: var(--muted); max-width: 62ch; justify-self: center; text-wrap: pretty; margin-top: 2px; }
+
+.ptip b { color: var(--fg); font-weight: 600; }
+
+.pbar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+
+.pbar i { display: block; height: 100%; width: 0%; background: var(--scan); transition: width 0.35s; }
+
+.prompt.is-ok { border-color: var(--ok); }
+
+.prompt.is-bad { border-color: var(--bad); }
+
+.prompt.is-reveal .eyebrow { color: var(--bad); }
+
+.review { display: grid; gap: 8px; justify-items: center; margin-top: 4px; }
+
+.legend { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font-size: 13.5px; }
+
+.legend .key { display: inline-flex; align-items: center; gap: 7px; }
+
+.legend .key i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+.legend .key b { font-family: var(--f-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.legend .ok i { background: var(--ok); }
+
+.legend .ok b { color: var(--ok); }
+
+.legend .bad i { background: var(--bad); }
+
+.legend .bad b { color: var(--bad); }
+
+.rhint { margin: 0px; font-size: 12px; color: var(--muted); }
+
+.ractions { justify-content: center; }
+
+body.clean .ractions, body.clean .rhint { display: none; }
+
+.stats { grid-area: 1 / 3; place-self: start end; display: flex; gap: 6px; }
+
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: grid; gap: 1px; min-width: 64px; }
+
+.stat b { font-family: var(--f-mono); font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums; }
+
+.stat small { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+.leftcol { grid-area: 2 / 1; place-self: start; width: 248px; max-height: 100%; min-height: 0px; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+
+.leftcol > * { pointer-events: auto; }
+
+.rail { flex: 0 1 auto; min-height: 150px; overflow-y: auto; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 8px; display: grid; gap: 2px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+.rail-title { margin: 2px 6px 6px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+.rgroup { display: grid; gap: 2px; }
+
+.rail button { font: inherit; color: var(--fg); background: transparent; border: 1px solid transparent; border-radius: 7px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; text-align: left; cursor: pointer; }
+
+.rail button em { font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.rail button:hover { background: var(--bg-lift); }
+
+.rail button[aria-pressed="true"] { border-color: var(--scan); background: rgba(111, 208, 232, 0.09); }
+
+.rail button[aria-pressed="true"] em { color: var(--scan); }
+
+.rail .rg { padding: 7px 9px; font-size: 13.5px; font-weight: 650; }
+
+.rail .subs { display: none; gap: 2px; margin: 0px 0px 4px 12px; padding-left: 8px; border-left: 1px solid var(--line-strong); }
+
+.rail .rgroup.open .subs { display: grid; }
+
+.rail .sb { padding: 5px 9px; font-size: 12.5px; color: var(--muted); }
+
+.rail .sb[aria-pressed="true"] { color: var(--fg); }
+
+.panel { grid-area: 2 / 3; place-self: start end; width: 292px; max-height: 100%; overflow-y: auto; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 16px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+.panel h3 { margin: 0px 0px 7px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 3px; }
+
+.seg button { font-style: inherit; font-variant: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-weight: 600; font-size: 13px; color: var(--muted); background: transparent; border: 0px; border-radius: 6px; padding: 7px 6px; cursor: pointer; }
+
+.seg button[aria-pressed="true"] { background: var(--bg-lift); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+.seg button:hover { color: var(--fg); }
+
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.btn { font-style: inherit; font-variant: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12.5px; font-weight: 600; color: var(--fg); background: var(--bg-lift); border: 1px solid var(--line-strong); border-radius: 7px; padding: 7px 10px; cursor: pointer; }
+
+.btn:hover { border-color: var(--scan); }
+
+.btn[aria-pressed="true"] { border-color: var(--scan); color: var(--scan); }
+
+.btn.primary { background: var(--bone); color: rgb(27, 22, 16); border-color: var(--bone); }
+
+.btn.primary:hover { filter: brightness(1.05); }
+
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.views { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+
+.views .btn { padding: 6px 4px; font-size: 12px; }
+
+.hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0px; }
+
+.hint kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 0px 4px; color: var(--fg); }
+
+.best { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.best b { color: var(--bone); font-weight: 600; }
+
+#search { width: 100%; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 13px; color: var(--fg); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 7px; padding: 8px 10px; }
+
+#search:focus { outline: none; border-color: var(--scan); }
+
+.results-list { list-style: none; margin: 6px 0px 0px; padding: 0px; display: grid; gap: 2px; max-height: 190px; overflow-y: auto; }
+
+.results-list button { width: 100%; text-align: left; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12.5px; color: var(--fg); background: transparent; border: 0px; border-radius: 6px; padding: 6px 8px; cursor: pointer; }
+
+.results-list button:hover { background: var(--bg-lift); }
+
+.dock { grid-area: 3 / 2; place-self: end center; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+.dock .btn { background: var(--panel); backdrop-filter: blur(8px); padding: 9px 14px; font-size: 13px; }
+
+#settingsBtn, #viewBtn { display: none; }
+
+#viewBtn.zoomed { border-color: var(--scan); color: var(--scan); }
+
+.credit { font-size: 11px; color: var(--muted); line-height: 1.55; margin: 0px; }
+
+.credit a { color: var(--muted); text-underline-offset: 2px; }
+
+.credit a:hover { color: var(--fg); }
+
+.viewcard { flex: 0 0 auto; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 10px 11px; display: grid; gap: 8px; }
+
+.vc-head { display: flex; justify-content: space-between; align-items: center; min-height: 14px; }
+
+.vc-head-actions { display: flex; gap: 6px; align-items: center; }
+
+.voice-btn { font-style: inherit; font-variant: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 11.5px; font-weight: 600; color: var(--muted); background: transparent; cursor: pointer; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 9px 2px 7px; display: inline-flex; align-items: center; gap: 6px; }
+
+.voice-btn i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+
+.voice-btn:hover { color: var(--fg); border-color: var(--scan); }
+
+.voice-btn[aria-pressed="true"] { color: var(--scan); border-color: var(--scan); }
+
+.voice-btn[aria-pressed="true"] i { background: var(--bad); animation: 1.4s ease-in-out 0s infinite normal none running rec-blink; }
+
+@keyframes rec-blink { 
+  50% { opacity: 0.3; }
+}
+
+.voice-heard { margin: -2px 4px 0px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.voice-heard.ok { color: var(--ok); }
+
+.voice-heard.bad { color: var(--bad); white-space: normal; line-height: 1.45; }
+
+.vc-head h3 { margin: 0px 0px 0px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+.vc-sec { display: grid; gap: 5px; }
+
+.vc-sec h4 { margin: 0px 0px 0px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+
+.viewcard .seg button { padding: 5px 6px; font-size: 12.5px; }
+
+.zp-grid { display: grid; grid-template-columns: minmax(0px, 1fr) minmax(0px, 1fr); gap: 4px; }
+
+.zchip { font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12.5px; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; text-align: left; white-space: nowrap; }
+
+.zchip kbd { font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); }
+
+.zchip:hover { border-color: var(--line-strong); }
+
+.zchip[aria-pressed="true"] { border-color: var(--scan); background: rgba(111, 208, 232, 0.09); }
+
+.zchip[aria-pressed="true"] kbd { color: var(--scan); }
+
+.zchip:disabled { opacity: 0.35; cursor: default; }
+
+.vc-tools { display: grid; grid-template-columns: repeat(3, minmax(0px, 1fr)); gap: 5px; }
+
+.vc-tools .btn { padding: 6px 4px; font-size: 12px; white-space: nowrap; }
+
+#unhideBtn { grid-column: 1 / -1; }
+
+.viewcard .hint { margin: 0px 4px; font-size: 11.5px; }
+
+.narrow-only { display: none; }
+
+@media (min-width: 901px) and (max-height: 840px) {
+  .leftcol { gap: 8px; }
+  .rail { padding-block: 7px; }
+  .rail .rg { padding: 5px 9px; }
+  .rail .sb { padding: 3px 9px; }
+  .rail-title { margin-bottom: 4px; }
+  .zchip { padding-block: 3px; }
+  .viewcard .seg button { padding-block: 4px; }
+  .views .btn, .vc-tools .btn { padding-block: 5px; }
+}
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 16px; font-size: 13.5px; max-width: min(560px, 100% - 32px); text-align: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 12; }
+
+.toast.show { opacity: 1; }
+
+.toast.bad { border-color: var(--bad); }
+
+.toast.ok { border-color: var(--ok); }
+
+.overlay { position: fixed; inset: 0px; display: grid; grid-template-columns: minmax(0px, 1fr); place-items: center; z-index: 20; background: rgba(6, 10, 14, 0.62); backdrop-filter: blur(3px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.card { box-sizing: border-box; width: min(480px, 100%); max-height: 86vh; overflow-y: auto; background: var(--bg-lift); border: 1px solid var(--line-strong); border-radius: 14px; padding: 22px; display: grid; gap: 14px; }
+
+.card h2 { margin: 0px; font-weight: 800; font-stretch: 118%; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--scan); }
+
+.card p { margin: 0px; color: var(--muted); line-height: 1.5; }
+
+#loading .card { text-align: center; }
+
+#confirm .card { width: min(400px, 100%); }
+
+#confirm p { color: var(--fg); }
+
+.confirm-actions { justify-content: flex-end; gap: 8px; }
+
+.confirm-actions .btn { padding: 9px 16px; font-size: 13px; }
+
+.btn.danger { color: var(--bad); border-color: rgba(255, 122, 107, 0.45); }
+
+.btn.danger:hover { border-color: var(--bad); }
+
+#loading progress { width: 100%; height: 6px; appearance: none; border: 0px; border-radius: 3px; background: var(--line); }
+
+#loading progress::-webkit-progress-bar { background: var(--line); border-radius: 3px; }
+
+#loading progress::-webkit-progress-value { background: var(--scan); border-radius: 3px; }
+
+body.clean .panel, body.clean .leftcol, body.clean .brand .sub, body.clean .dock .btn:not(#cleanExit) { display: none !important; }
+
+body.clean .pname { font-size: clamp(30px, 4.6vw, 60px); }
+
+body.clean .prompt { padding: 16px 26px; }
+
+#cleanExit { display: none; }
+
+body.clean #cleanExit { display: inline-block; opacity: 0.55; }
+
+:focus-visible { outline: 2px solid var(--scan); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .ui { grid-template-columns: minmax(0px, 1fr); grid-template-rows: auto auto auto auto minmax(0px, 1fr) auto; gap: 8px; }
+  .brand { grid-area: 1 / 1; justify-self: center; }
+  .lockup { gap: 9px; }
+  .home .logo-mark { height: 16px; }
+  .home .wordmark { display: inline; font-size: 12.5px; }
+  .lockup .divider { height: 14px; }
+  .brand .mark { font-size: 15px; }
+  .prompt { grid-area: 2 / 1; align-self: stretch; padding: 10px 14px; }
+  .pname { font-size: clamp(19px, 5.6vw, 26px); }
+  .ptip { font-size: 12px; }
+  .stats { grid-area: 3 / 1; justify-self: center; }
+  .stat { padding: 4px 9px; min-width: 56px; }
+  .stat b { font-size: 14px; }
+  .leftcol { display: contents; }
+  .rail { grid-area: 4 / 1; width: 100%; min-height: 0px; max-height: none; overflow: auto hidden; display: flex; flex-wrap: nowrap; gap: 5px; padding: 0px; background: none; border: 0px; backdrop-filter: none; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail-title { display: none; }
+  .rgroup, .rail .rgroup.open .subs { display: contents; }
+  .rail button { flex: 0 0 auto; background: var(--panel); border-color: var(--line); white-space: nowrap; }
+  .rail .rg { padding: 6px 10px; font-size: 13px; }
+  .rail .sb { padding: 6px 10px; font-size: 12.5px; border-style: dashed; }
+  .dock { grid-area: 6 / 1; }
+  .dock .btn { padding: 9px 12px; }
+  #settingsBtn, #viewBtn { display: inline-block; }
+  .panel, .viewcard { position: fixed; left: 0px; right: 0px; bottom: 0px; width: auto; max-height: 72vh; overflow-y: auto; z-index: 15; border-radius: 16px 16px 0px 0px; border-bottom: 0px; padding-block: 16px calc(env(safe-area-inset-bottom, 0px) + 16px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); transform: translateY(105%); transition: transform 0.25s; }
+  .viewcard { gap: 12px; }
+  body.sheet-open .panel, body.view-open .viewcard { transform: none; }
+  .panel .close-sheet, .viewcard .close-sheet { display: inline-block; }
+  .zp-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 5px; }
+  .zchip { padding: 8px 9px; }
+  .zchip kbd { display: none; }
+  .narrow-only { display: block; }
+  .callout { font-size: 13px; }
+}
+
+.close-sheet { display: none; justify-self: end; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: auto ease 0s 1 normal none running none !important; }
+}</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f14">
+<link rel="icon" href="https://samplesize1.com/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://samplesize1.com/tools/bone-atlas/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Atlas des os">
+<meta property="og:description" content="Apprenez tous les os du corps humain sur un squelette en 3D. Révision, entraînement et tests chronométrés par région, pour les 206 os. Gratuit, par SampleSize_1.">
+<meta property="og:image" content="https://samplesize1.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<title>Atlas des os</title>
+<meta name="description" content="Apprenez tous les os du corps humain sur un squelette en 3D. Révision, entraînement et tests chronométrés par région, pour les 206 os. Gratuit, par SampleSize_1.">
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Montserrat:wght@800&amp;display=swap">
+
+
+</head><body><div id="stage"><canvas id="c" tabindex="0" aria-label="Squelette 3D. Faites glisser pour tourner, molette ou pincement pour zoomer, cliquez sur un os pour le sélectionner." data-engine="three.js r169" width="1920" height="100000" style="touch-action: none;"></canvas></div>
+<svg id="leader" aria-hidden="true"><line id="leaderLine" x1="0" y1="0" x2="0" y2="0"></line><circle id="leaderDot" r="0" cx="0" cy="0"></circle></svg>
+<div class="callout" id="callout">Os frontal</div>
+
+<div class="ui">
+  <div class="brand">
+    <div class="lockup">
+      <!-- the SampleSize_1 logo ([1] mark + wordmark), drawn in this tool's blue; links back to the main site -->
+      <a class="home" id="homeLink" href="https://samplesize1.com/" aria-label="Page d’accueil de SampleSize_1">
+        <svg class="logo-mark" viewBox="516 555 968 888" fill="currentColor" aria-hidden="true" focusable="false">
+          <path d="M516 555H772V670H663V1328H772V1443H516Z"></path>
+          <path d="M1484 555H1227V670H1335V1328H1227V1443H1484Z"></path>
+          <path d="M864 733L1092 698V1320H964V823L864 840Z"></path>
+        </svg>
+        <span class="wordmark">SampleSize_1</span>
+      </a>
+      <span class="divider" aria-hidden="true"></span>
+      <div class="mark" id="toolName">ATLAS <span>DES OS</span></div>
+    </div>
+    <div class="sub">Trouvez tous les os du corps humain</div>
+  </div>
+
+  <div class="prompt" id="prompt" aria-live="polite">
+    <div class="eyebrow" id="pEyebrow">Révision · Corps entier</div>
+    <div class="pname" id="pName" style="white-space: nowrap; line-height: 37.4px;">Os frontal</div>
+    <div class="pmeta" id="pMeta">1 sur 60 · ← → pour avancer, ou cliquez sur un os</div>
+    <div class="ptip" id="pTip">206 os dans un squelette adulte type.</div>
+    <div class="pbar" id="pBarWrap"><i id="pBar" style="width: 1.7%;"></i></div>
+    <div class="review" id="review" hidden>
+      <div class="legend">
+        <span class="key ok"><i></i><b id="rOk">0</b> <span id="rOkLabel">réussis</span></span>
+        <span class="key bad"><i></i><b id="rBad">0</b> <span id="rBadLabel">ratés</span></span>
+      </div>
+      <p class="rhint">Cliquez sur un os pour voir son nom.</p>
+      <div class="row ractions">
+        <button class="btn primary" id="rAgain" type="button">Recommencer</button>
+        <button class="btn" id="rPractice" type="button">Réviser les erreurs</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><small>Précision</small><b id="sAcc">–</b></div>
+    <div class="stat"><small>Temps</small><b id="sTime">0:00</b></div>
+    <div class="stat"><small>Série</small><b id="sStreak">0</b></div>
+  </div>
+
+  <div class="leftcol">
+    <nav class="rail" id="rail" aria-label="Régions du corps"></nav>
+
+    <!-- One place for everything that changes the viewpoint. Always open on desktop so the 1–0 keys are visible;
+         on phones it is a sheet opened from the View button. -->
+    <section class="viewcard" id="viewCard" aria-label="Vue">
+      <div class="vc-head">
+        <h3>Vue</h3>
+        <div class="vc-head-actions">
+          <button class="voice-btn" id="voiceBtn" type="button" aria-pressed="false" title="Commandes vocales (V). Dites une zone, par exemple « pied gauche », « colonne » ou « corps entier »."><i></i>Voix</button>
+          <button class="btn close-sheet" id="closeView" type="button">OK</button>
+        </div>
+      </div>
+      <p class="voice-heard" id="voiceHeard" aria-live="polite" hidden></p>
+      <div class="vc-sec">
+        <h4>Zoomer sur</h4>
+        <div class="zp-grid" id="zoomGrid"></div>
+      </div>
+      <div class="vc-sec">
+        <h4>Côté</h4>
+        <div class="seg" id="viewSideSeg">
+          <button type="button" data-v="both" aria-pressed="true">Les deux</button>
+          <button type="button" data-v="left" title="La gauche du squelette lui-même" aria-pressed="false">Gauche</button>
+          <button type="button" data-v="right" title="La droite du squelette lui-même" aria-pressed="false">Droite</button>
+        </div>
+      </div>
+      <div class="vc-sec">
+        <h4>Regarder depuis</h4>
+        <div class="views">
+          <button class="btn" type="button" data-view="front">Face</button>
+          <button class="btn" type="button" data-view="back">Dos</button>
+          <button class="btn" type="button" data-view="left" title="Regarder le côté gauche du squelette">Gauche</button>
+          <button class="btn" type="button" data-view="right" title="Regarder le côté droit du squelette">Droite</button>
+        </div>
+      </div>
+      <div class="vc-tools">
+        <button class="btn" id="xrayBtn" type="button" aria-pressed="false" title="Voir à travers les os et cliquer sur ceux cachés derrière d’autres (X)">Rayons X</button>
+        <button class="btn" id="peelBtn" type="button" aria-pressed="false" title="Cliquez sur un os pour le masquer et voir ce qu’il y a dessous. Maj + clic fait la même chose.">Effeuiller</button>
+        <button class="btn" id="resetBtn" type="button" title="Recadrer le zoom actuel (R)">Recadrer</button>
+        <button class="btn" id="unhideBtn" type="button" hidden>Afficher 0 os masqué</button>
+      </div>
+      <p class="hint narrow-only">Le zoom ne déplace que la caméra ; le quiz continue. Les rayons X permettent de toucher les os cachés derrière d’autres. Le mode effeuillage masque l’os touché.</p>
+    </section>
+  </div>
+
+  <aside class="panel" id="panel" aria-label="Réglages">
+    <button class="btn close-sheet" id="closeSheet" type="button">OK</button>
+    <section>
+      <h3>Mode</h3>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-v="study" aria-pressed="true">Révision</button>
+        <button type="button" data-v="practice" aria-pressed="false">Entraînement</button>
+        <button type="button" data-v="test" aria-pressed="false">Test</button>
+      </div>
+      <p class="hint" id="modeHint" style="margin-top:7px">Parcourez chaque os avec les flèches ou cliquez sur un os pour voir son nom. Pas de score.</p>
+    </section>
+    <section>
+      <h3>Os</h3>
+      <div class="seg" id="setSeg">
+        <button type="button" data-v="names" aria-pressed="true">60 noms</button>
+        <button type="button" data-v="all" aria-pressed="false">Les 206</button>
+      </div>
+    </section>
+    <section>
+      <h3>Indices</h3>
+      <div class="seg" id="hintSeg">
+        <button type="button" data-v="on" aria-pressed="true">Indices activés</button>
+        <button type="button" data-v="off" aria-pressed="false">Indices désactivés</button>
+      </div>
+      <p class="hint" style="margin-top:7px" id="hintHint">Les noms incluent des repères courants, comme « Patella (rotule) » et « 5e métacarpien (auriculaire) ».</p>
+    </section>
+    <section id="searchBox">
+      <h3>Trouver un os</h3>
+      <input id="search" type="search" placeholder="ex. : hamatum, 7e côte, T4" autocomplete="off">
+      <ul class="results-list" id="searchList"></ul>
+    </section>
+    <section>
+      <div class="best" id="best"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn primary" id="restartBtn" type="button">Recommencer</button>
+        <button class="btn" id="cleanBtn" type="button">Vue épurée</button>
+      </div>
+      <p class="hint" id="keysHint" style="margin-top:8px"><kbd>←</kbd> <kbd>→</kbd> précédent / suivant · <kbd>1</kbd>–<kbd>0</kbd> zoom (encore pour la gauche, puis la droite) · <kbd>Échap</kbd> dézoomer · <kbd>V</kbd> commandes vocales · <kbd>H</kbd> indices · <kbd>X</kbd> rayons X · <kbd>C</kbd> vue épurée · <kbd>R</kbd> recadrer</p>
+    </section>
+    <p class="credit">
+      Modèle 3D : <a href="https://github.com/Z-Anatomy/The-blend" target="_blank" rel="noopener">Z-Anatomy</a>, d’après
+      <a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/desc.html" target="_blank" rel="noopener">BodyParts3D</a> © The Database Center for Life Science,
+      <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Créé par @samplesize_1 (version originale en anglais : <a href="https://samplesize1.com/tools/bone-atlas/" target="_blank" rel="noopener">Bone Atlas</a>).
+    </p>
+  </aside>
+
+  <div class="dock">
+    <button class="btn" id="prevBtn" type="button">← Précédent</button>
+    <button class="btn" id="nextBtn" type="button">Suivant →</button>
+    <button class="btn" id="skipBtn" type="button">Montrer</button>
+    <button class="btn" id="viewBtn" type="button" aria-controls="viewCard">Vue</button>
+    <button class="btn" id="settingsBtn" type="button">Réglages</button>
+    <button class="btn" id="cleanExit" type="button">Quitter la vue épurée</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<div class="overlay" id="confirm" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
+  <div class="card">
+    <h2 id="confirmTitle">Arrêter ce test ?</h2>
+    <p id="confirmMsg"></p>
+    <div class="row confirm-actions">
+      <button class="btn danger" id="confirmYes" type="button">Arrêter le test</button>
+      <button class="btn primary" id="confirmNo" type="button">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="loading">
+  <div class="card">
+    <h2>Atlas des os</h2>
+    <p id="loadMsg">Chargement du squelette 3D…</p>
+    <progress id="loadBar" max="1" value="1"></progress>
+  </div>
+</div>
+
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+
+<script>
+/* Start-up watchdog (plain script, so it runs even if the 3D code is blocked): if anything stops the app
+   from starting, say what happened on the loading card instead of leaving it spinning. */
+(function () {
+  function say(msg) {
+    var card = document.getElementById('loading'), m = document.getElementById('loadMsg');
+    if (!card || !m || window.__the206 || window.__the206Fatal) return;
+    card.hidden = false; m.textContent = msg;
+  }
+  function onErr(text) {
+    if (window.__the206 || /ResizeObserver/.test(text || '')) return;
+    say('L’Atlas des os n’a pas pu démarrer (' + (text || 'erreur inconnue') + '). Essayez de recharger la page. Si cela ne se produit que dans ce navigateur, une extension ou un réglage de confidentialité bloque probablement une partie de la page.');
+  }
+  window.addEventListener('error', function (e) { onErr(e.message); });
+  window.addEventListener('unhandledrejection', function (e) { onErr(e.reason && (e.reason.message || String(e.reason))); });
+  setTimeout(function () {
+    if (!window.__the206Started) say('Le moteur 3D ne s’est pas chargé. Un bloqueur de contenu, un filtre DNS ou un réglage de confidentialité strict bloque peut-être les scripts de cette page.');
+  }, 15000);
+})();
+</script>
+
+<script type="module">
+// three.js ships next to the page (three-bundle.js). If that file can't be loaded, fall back to the public CDN.
+async function loadLib() {
+  try {
+    return await import('./three-bundle.js');
+  } catch (e) {
+    console.warn('Local three.js bundle failed to load, trying the CDN.', e);
+    const THREE = await import('three');
+    const [{ GLTFLoader }, { OrbitControls }, { RoomEnvironment }] = await Promise.all([
+      import('three/addons/loaders/GLTFLoader.js'),
+      import('three/addons/controls/OrbitControls.js'),
+      import('three/addons/environments/RoomEnvironment.js'),
+    ]);
+    return { THREE, GLTFLoader, OrbitControls, RoomEnvironment };
+  }
+}
+const { THREE, GLTFLoader, OrbitControls, RoomEnvironment } = await loadLib().catch((err) => {
+  document.getElementById('loadMsg').textContent = 'Le moteur 3D ne s’est pas chargé. Un bloqueur de contenu, un filtre DNS ou un réglage de confidentialité strict bloque peut-être les scripts de cette page.';
+  window.__the206Fatal = true;
+  throw err;
+});
+window.__the206Started = true;
+
+const DATA = {"regions":[{"key":"head","label":"Tête","subs":[{"key":"cranium","label":"Crâne"},{"key":"face","label":"Face et mâchoire"},{"key":"ear","label":"Oreille"}]},{"key":"torso","label":"Tronc","subs":[{"key":"spine","label":"Colonne vertébrale"},{"key":"ribcage","label":"Cage thoracique"},{"key":"pelvis","label":"Bassin"}]},{"key":"arm","label":"Bras","subs":[{"key":"shoulder","label":"Épaule"},{"key":"armbones","label":"Bras et avant-bras"}]},{"key":"hand","label":"Main","subs":[{"key":"carpals","label":"Carpe (poignet)"},{"key":"metacarpals","label":"Métacarpe (paume)"},{"key":"fingers","label":"Doigts"}]},{"key":"leg","label":"Jambe","subs":[{"key":"thigh","label":"Cuisse et genou"},{"key":"lowerleg","label":"Bas de la jambe"}]},{"key":"foot","label":"Pied","subs":[{"key":"tarsals","label":"Tarse (cheville)"},{"key":"metatarsals","label":"Métatarse"},{"key":"toes","label":"Orteils"}]}],"tips":{"all":"206 os dans un squelette adulte type.","head":"29 os : 22 dans le crâne, 6 dans les oreilles, plus l’os hyoïde.","cranium":"Les os du crâne : pariétal, ethmoïde, sphénoïde, temporal, occipital, frontal. Le pariétal et le temporal sont pairs, donc le crâne compte 8 os.","face":"Les os de la face : vomer, cornets nasaux inférieurs, os nasaux, maxillaires, mandibule, os palatins, os zygomatiques, os lacrymaux. L’os hyoïde se trouve sous la mâchoire et ne touche aucun autre os.","ear":"Le malléus, l’incus et le stapes (marteau, enclume, étrier) transmettent le son du tympan vers l’oreille interne. Le stapes est le plus petit os du corps.","torso":"53 os : 24 vertèbres, 24 côtes, le sternum et le bassin (2 os coxaux, sacrum, coccyx).","spine":"Petit-déjeuner à 7 h, déjeuner à 12 h, dîner à 17 h : 7 cervicales, 12 thoraciques, 5 lombaires. C1 (atlas) porte la tête ; C2 (axis) lui permet de tourner.","ribcage":"Les côtes 1 à 7 sont les vraies côtes (reliées directement au sternum), 8 à 10 les fausses côtes (reliées par du cartilage), 11 et 12 les côtes flottantes.","pelvis":"Chaque os coxal est formé de trois os soudés : ilium, ischium et pubis. Le sacrum est formé de 5 vertèbres soudées ; le coccyx en compte généralement 4.","arm":"10 os : clavicule, scapula, humérus, radius et ulna de chaque côté.","shoulder":"La clavicule et la scapula forment la ceinture scapulaire. La clavicule est le seul lien osseux entre le bras et le tronc.","armbones":"Le radius est du côté du pouce dans l’avant-bras. L’ulna forme la pointe du coude.","hand":"27 os dans chaque main : 8 os du carpe, 5 métacarpiens, 14 phalanges.","carpals":"Rangée proche de l’avant-bras, du pouce vers l’auriculaire : scaphoïde, lunatum, triquetrum, pisiforme. Puis rangée proche des doigts, de l’auriculaire vers le pouce : hamatum, capitatum, trapézoïde, trapèze.","metacarpals":"Les métacarpiens sont numérotés de 1 à 5, en partant du pouce.","fingers":"Chaque doigt a une phalange proximale, moyenne et distale. Le pouce n’a pas de phalange moyenne, d’où 14 phalanges par main.","leg":"8 os : fémur, patella, tibia et fibula de chaque côté.","thigh":"Le fémur est l’os le plus long et le plus solide du corps. La patella (rotule) est le plus grand os sésamoïde, un os qui se forme dans un tendon.","lowerleg":"Le tibia porte le poids du corps. La fibula (péroné) est l’os fin situé sur le côté externe de la jambe.","foot":"26 os dans chaque pied : 7 os du tarse, 5 métatarsiens, 14 phalanges.","tarsals":"Les 7 os du tarse : talus, calcanéus, naviculaire, cunéiformes médial, intermédiaire et latéral, cuboïde.","metatarsals":"Les métatarsiens sont numérotés de 1 à 5, en partant du gros orteil.","toes":"Comme pour les doigts : phalanges proximale, moyenne et distale, sans phalange moyenne pour le gros orteil. 14 par pied."},"groups":{"frontal":{"name":"Os frontal","region":"head","sub":"cranium","tech":"Os frontal","members":["frontal"],"en":"Frontal bone"},"parietal":{"name":"Os pariétal","region":"head","sub":"cranium","tech":"Os pariétal","members":["parietal_l","parietal_r"],"en":"Parietal bone"},"temporal":{"name":"Os temporal","region":"head","sub":"cranium","tech":"Os temporal","members":["temporal_l","temporal_r"],"en":"Temporal bone"},"occipital":{"name":"Os occipital","region":"head","sub":"cranium","tech":"Os occipital","members":["occipital"],"en":"Occipital bone"},"sphenoid":{"name":"Os sphénoïde","region":"head","sub":"cranium","tech":"Os sphénoïde","members":["sphenoid"],"en":"Sphenoid bone"},"ethmoid":{"name":"Os ethmoïde","region":"head","sub":"cranium","tech":"Os ethmoïde","members":["ethmoid"],"en":"Ethmoid bone"},"nasal":{"name":"Os nasal","region":"head","sub":"face","tech":"Os nasal","members":["nasal_l","nasal_r"],"en":"Nasal bone"},"lacrimal":{"name":"Os lacrymal","region":"head","sub":"face","tech":"Os lacrymal","members":["lacrimal_l","lacrimal_r"],"en":"Lacrimal bone"},"zygomatic":{"name":"Os zygomatique (pommette)","region":"head","sub":"face","tech":"Os zygomatique","members":["zygomatic_l","zygomatic_r"],"en":"Zygomatic bone (cheekbone)"},"maxilla":{"name":"Maxillaire (mâchoire supérieure)","region":"head","sub":"face","tech":"Maxillaire","members":["maxilla_l","maxilla_r"],"en":"Maxilla (upper jaw)"},"palatine":{"name":"Os palatin","region":"head","sub":"face","tech":"Os palatin","members":["palatine_l","palatine_r"],"en":"Palatine bone"},"inf_concha":{"name":"Cornet nasal inférieur","region":"head","sub":"face","tech":"Cornet nasal inférieur","members":["inf_concha_l","inf_concha_r"],"en":"Inferior nasal concha"},"vomer":{"name":"Vomer","region":"head","sub":"face","tech":"Vomer","members":["vomer"],"en":"Vomer"},"mandible":{"name":"Mandibule (mâchoire inférieure)","region":"head","sub":"face","tech":"Mandibule","members":["mandible"],"en":"Mandible (lower jaw)"},"hyoid":{"name":"Os hyoïde","region":"head","sub":"face","tech":"Os hyoïde","members":["hyoid"],"en":"Hyoid bone"},"malleus":{"name":"Malléus (marteau)","region":"head","sub":"ear","tech":"Malléus","members":["malleus_l","malleus_r"],"en":"Malleus (hammer)"},"incus":{"name":"Incus (enclume)","region":"head","sub":"ear","tech":"Incus","members":["incus_l","incus_r"],"en":"Incus (anvil)"},"stapes":{"name":"Stapes (étrier)","region":"head","sub":"ear","tech":"Stapes","members":["stapes_l","stapes_r"],"en":"Stapes (stirrup)"},"atlas":{"name":"Atlas (C1)","region":"torso","sub":"spine","tech":"Atlas (C1)","members":["c1"],"en":"Atlas (C1)"},"axis":{"name":"Axis (C2)","region":"torso","sub":"spine","tech":"Axis (C2)","members":["c2"],"en":"Axis (C2)"},"cervical":{"name":"Vertèbre cervicale (C3–C7)","region":"torso","sub":"spine","tech":"Vertèbre cervicale (C3–C7)","members":["c3","c4","c5","c6","c7"],"en":"Cervical vertebra (C3–C7)"},"thoracic":{"name":"Vertèbre thoracique (T1–T12)","region":"torso","sub":"spine","tech":"Vertèbre thoracique (T1–T12)","members":["t1","t2","t3","t4","t5","t6","t7","t8","t9","t10","t11","t12"],"en":"Thoracic vertebra (T1–T12)"},"lumbar":{"name":"Vertèbre lombaire (L1–L5)","region":"torso","sub":"spine","tech":"Vertèbre lombaire (L1–L5)","members":["l1","l2","l3","l4","l5"],"en":"Lumbar vertebra (L1–L5)"},"sternum":{"name":"Sternum","region":"torso","sub":"ribcage","tech":"Sternum","members":["sternum"],"en":"Sternum (breastbone)"},"rib":{"name":"Côte","region":"torso","sub":"ribcage","tech":"Côte","members":["rib1_l","rib1_r","rib2_l","rib2_r","rib3_l","rib3_r","rib4_l","rib4_r","rib5_l","rib5_r","rib6_l","rib6_r","rib7_l","rib7_r","rib8_l","rib8_r","rib9_l","rib9_r","rib10_l","rib10_r","rib11_l","rib11_r","rib12_l","rib12_r"],"en":"Rib"},"hip":{"name":"Os coxal (os de la hanche)","region":"torso","sub":"pelvis","tech":"Os coxal","members":["hip_l","hip_r"],"en":"Hip bone (coxal bone)"},"sacrum":{"name":"Sacrum","region":"torso","sub":"pelvis","tech":"Sacrum","members":["sacrum"],"en":"Sacrum"},"coccyx":{"name":"Coccyx","region":"torso","sub":"pelvis","tech":"Coccyx","members":["coccyx"],"en":"Coccyx (tailbone)"},"clavicle":{"name":"Clavicule","region":"arm","sub":"shoulder","tech":"Clavicule","members":["clavicle_l","clavicle_r"],"en":"Clavicle (collarbone)"},"scapula":{"name":"Scapula (omoplate)","region":"arm","sub":"shoulder","tech":"Scapula","members":["scapula_l","scapula_r"],"en":"Scapula (shoulder blade)"},"humerus":{"name":"Humérus","region":"arm","sub":"armbones","tech":"Humérus","members":["humerus_l","humerus_r"],"en":"Humerus"},"radius":{"name":"Radius","region":"arm","sub":"armbones","tech":"Radius","members":["radius_l","radius_r"],"en":"Radius"},"ulna":{"name":"Ulna (cubitus)","region":"arm","sub":"armbones","tech":"Ulna","members":["ulna_l","ulna_r"],"en":"Ulna"},"scaphoid":{"name":"Scaphoïde","region":"hand","sub":"carpals","tech":"Scaphoïde","members":["scaphoid_l","scaphoid_r"],"en":"Scaphoid"},"lunate":{"name":"Lunatum (semi-lunaire)","region":"hand","sub":"carpals","tech":"Lunatum","members":["lunate_l","lunate_r"],"en":"Lunate"},"triquetrum":{"name":"Triquetrum (pyramidal)","region":"hand","sub":"carpals","tech":"Triquetrum","members":["triquetrum_l","triquetrum_r"],"en":"Triquetrum"},"pisiform":{"name":"Pisiforme","region":"hand","sub":"carpals","tech":"Pisiforme","members":["pisiform_l","pisiform_r"],"en":"Pisiform"},"hamate":{"name":"Hamatum (os crochu)","region":"hand","sub":"carpals","tech":"Hamatum","members":["hamate_l","hamate_r"],"en":"Hamate"},"capitate":{"name":"Capitatum (grand os)","region":"hand","sub":"carpals","tech":"Capitatum","members":["capitate_l","capitate_r"],"en":"Capitate"},"trapezoid":{"name":"Trapézoïde","region":"hand","sub":"carpals","tech":"Trapézoïde","members":["trapezoid_l","trapezoid_r"],"en":"Trapezoid"},"trapezium":{"name":"Trapèze","region":"hand","sub":"carpals","tech":"Trapèze","members":["trapezium_l","trapezium_r"],"en":"Trapezium"},"metacarpal":{"name":"Métacarpien","region":"hand","sub":"metacarpals","tech":"Métacarpien","members":["mc1_l","mc1_r","mc2_l","mc2_r","mc3_l","mc3_r","mc4_l","mc4_r","mc5_l","mc5_r"],"en":"Metacarpal"},"proximal_ph_hand":{"name":"Phalange proximale (main)","region":"hand","sub":"fingers","tech":"Phalange proximale (main)","members":["pph1_hand_l","pph1_hand_r","pph2_hand_l","pph2_hand_r","pph3_hand_l","pph3_hand_r","pph4_hand_l","pph4_hand_r","pph5_hand_l","pph5_hand_r"],"en":"Proximal phalanx (hand)"},"middle_ph_hand":{"name":"Phalange moyenne (main)","region":"hand","sub":"fingers","tech":"Phalange moyenne (main)","members":["mph2_hand_l","mph2_hand_r","mph3_hand_l","mph3_hand_r","mph4_hand_l","mph4_hand_r","mph5_hand_l","mph5_hand_r"],"en":"Middle phalanx (hand)"},"distal_ph_hand":{"name":"Phalange distale (main)","region":"hand","sub":"fingers","tech":"Phalange distale (main)","members":["dph1_hand_l","dph1_hand_r","dph2_hand_l","dph2_hand_r","dph3_hand_l","dph3_hand_r","dph4_hand_l","dph4_hand_r","dph5_hand_l","dph5_hand_r"],"en":"Distal phalanx (hand)"},"femur":{"name":"Fémur (os de la cuisse)","region":"leg","sub":"thigh","tech":"Fémur","members":["femur_l","femur_r"],"en":"Femur (thigh bone)"},"patella":{"name":"Patella (rotule)","region":"leg","sub":"thigh","tech":"Patella","members":["patella_l","patella_r"],"en":"Patella (kneecap)"},"tibia":{"name":"Tibia","region":"leg","sub":"lowerleg","tech":"Tibia","members":["tibia_l","tibia_r"],"en":"Tibia (shin bone)"},"fibula":{"name":"Fibula (péroné)","region":"leg","sub":"lowerleg","tech":"Fibula","members":["fibula_l","fibula_r"],"en":"Fibula"},"talus":{"name":"Talus (astragale)","region":"foot","sub":"tarsals","tech":"Talus","members":["talus_l","talus_r"],"en":"Talus"},"calcaneus":{"name":"Calcanéus (os du talon)","region":"foot","sub":"tarsals","tech":"Calcanéus","members":["calcaneus_l","calcaneus_r"],"en":"Calcaneus (heel bone)"},"navicular":{"name":"Naviculaire","region":"foot","sub":"tarsals","tech":"Naviculaire","members":["navicular_l","navicular_r"],"en":"Navicular"},"med_cuneiform":{"name":"Cunéiforme médial","region":"foot","sub":"tarsals","tech":"Cunéiforme médial","members":["med_cuneiform_l","med_cuneiform_r"],"en":"Medial cuneiform"},"int_cuneiform":{"name":"Cunéiforme intermédiaire","region":"foot","sub":"tarsals","tech":"Cunéiforme intermédiaire","members":["int_cuneiform_l","int_cuneiform_r"],"en":"Intermediate cuneiform"},"lat_cuneiform":{"name":"Cunéiforme latéral","region":"foot","sub":"tarsals","tech":"Cunéiforme latéral","members":["lat_cuneiform_l","lat_cuneiform_r"],"en":"Lateral cuneiform"},"cuboid":{"name":"Cuboïde","region":"foot","sub":"tarsals","tech":"Cuboïde","members":["cuboid_l","cuboid_r"],"en":"Cuboid"},"metatarsal":{"name":"Métatarsien","region":"foot","sub":"metatarsals","tech":"Métatarsien","members":["mt1_l","mt1_r","mt2_l","mt2_r","mt3_l","mt3_r","mt4_l","mt4_r","mt5_l","mt5_r"],"en":"Metatarsal"},"proximal_ph_foot":{"name":"Phalange proximale (pied)","region":"foot","sub":"toes","tech":"Phalange proximale (pied)","members":["pph1_foot_l","pph1_foot_r","pph2_foot_l","pph2_foot_r","pph3_foot_l","pph3_foot_r","pph4_foot_l","pph4_foot_r","pph5_foot_l","pph5_foot_r"],"en":"Proximal phalanx (foot)"},"middle_ph_foot":{"name":"Phalange moyenne (pied)","region":"foot","sub":"toes","tech":"Phalange moyenne (pied)","members":["mph2_foot_l","mph2_foot_r","mph3_foot_l","mph3_foot_r","mph4_foot_l","mph4_foot_r","mph5_foot_l","mph5_foot_r"],"en":"Middle phalanx (foot)"},"distal_ph_foot":{"name":"Phalange distale (pied)","region":"foot","sub":"toes","tech":"Phalange distale (pied)","members":["dph1_foot_l","dph1_foot_r","dph2_foot_l","dph2_foot_r","dph3_foot_l","dph3_foot_r","dph4_foot_l","dph4_foot_r","dph5_foot_l","dph5_foot_r"],"en":"Distal phalanx (foot)"}},"bones":[{"id":"frontal","name":"Os frontal","tech":"Os frontal","group":"frontal","region":"head","sub":"cranium","side":"","en":"Frontal bone"},{"id":"parietal_l","name":"Os pariétal gauche","tech":"Os pariétal gauche","group":"parietal","region":"head","sub":"cranium","side":"L","en":"Left parietal bone"},{"id":"parietal_r","name":"Os pariétal droit","tech":"Os pariétal droit","group":"parietal","region":"head","sub":"cranium","side":"R","en":"Right parietal bone"},{"id":"temporal_l","name":"Os temporal gauche","tech":"Os temporal gauche","group":"temporal","region":"head","sub":"cranium","side":"L","en":"Left temporal bone"},{"id":"temporal_r","name":"Os temporal droit","tech":"Os temporal droit","group":"temporal","region":"head","sub":"cranium","side":"R","en":"Right temporal bone"},{"id":"occipital","name":"Os occipital","tech":"Os occipital","group":"occipital","region":"head","sub":"cranium","side":"","en":"Occipital bone"},{"id":"sphenoid","name":"Os sphénoïde","tech":"Os sphénoïde","group":"sphenoid","region":"head","sub":"cranium","side":"","en":"Sphenoid bone"},{"id":"ethmoid","name":"Os ethmoïde","tech":"Os ethmoïde","group":"ethmoid","region":"head","sub":"cranium","side":"","en":"Ethmoid bone"},{"id":"nasal_l","name":"Os nasal gauche","tech":"Os nasal gauche","group":"nasal","region":"head","sub":"face","side":"L","en":"Left nasal bone"},{"id":"nasal_r","name":"Os nasal droit","tech":"Os nasal droit","group":"nasal","region":"head","sub":"face","side":"R","en":"Right nasal bone"},{"id":"lacrimal_l","name":"Os lacrymal gauche","tech":"Os lacrymal gauche","group":"lacrimal","region":"head","sub":"face","side":"L","en":"Left lacrimal bone"},{"id":"lacrimal_r","name":"Os lacrymal droit","tech":"Os lacrymal droit","group":"lacrimal","region":"head","sub":"face","side":"R","en":"Right lacrimal bone"},{"id":"zygomatic_l","name":"Os zygomatique gauche (pommette)","tech":"Os zygomatique gauche","group":"zygomatic","region":"head","sub":"face","side":"L","en":"Left zygomatic bone (cheekbone)"},{"id":"zygomatic_r","name":"Os zygomatique droit (pommette)","tech":"Os zygomatique droit","group":"zygomatic","region":"head","sub":"face","side":"R","en":"Right zygomatic bone (cheekbone)"},{"id":"maxilla_l","name":"Maxillaire gauche (mâchoire supérieure)","tech":"Maxillaire gauche","group":"maxilla","region":"head","sub":"face","side":"L","en":"Left maxilla (upper jaw)"},{"id":"maxilla_r","name":"Maxillaire droit (mâchoire supérieure)","tech":"Maxillaire droit","group":"maxilla","region":"head","sub":"face","side":"R","en":"Right maxilla (upper jaw)"},{"id":"palatine_l","name":"Os palatin gauche","tech":"Os palatin gauche","group":"palatine","region":"head","sub":"face","side":"L","en":"Left palatine bone"},{"id":"palatine_r","name":"Os palatin droit","tech":"Os palatin droit","group":"palatine","region":"head","sub":"face","side":"R","en":"Right palatine bone"},{"id":"inf_concha_l","name":"Cornet nasal inférieur gauche","tech":"Cornet nasal inférieur gauche","group":"inf_concha","region":"head","sub":"face","side":"L","en":"Left inferior nasal concha"},{"id":"inf_concha_r","name":"Cornet nasal inférieur droit","tech":"Cornet nasal inférieur droit","group":"inf_concha","region":"head","sub":"face","side":"R","en":"Right inferior nasal concha"},{"id":"vomer","name":"Vomer","tech":"Vomer","group":"vomer","region":"head","sub":"face","side":"","en":"Vomer"},{"id":"mandible","name":"Mandibule (mâchoire inférieure)","tech":"Mandibule","group":"mandible","region":"head","sub":"face","side":"","en":"Mandible (lower jaw)"},{"id":"hyoid","name":"Os hyoïde","tech":"Os hyoïde","group":"hyoid","region":"head","sub":"face","side":"","en":"Hyoid bone"},{"id":"malleus_l","name":"Malléus gauche (marteau)","tech":"Malléus gauche","group":"malleus","region":"head","sub":"ear","side":"L","en":"Left malleus (hammer)"},{"id":"malleus_r","name":"Malléus droit (marteau)","tech":"Malléus droit","group":"malleus","region":"head","sub":"ear","side":"R","en":"Right malleus (hammer)"},{"id":"incus_l","name":"Incus gauche (enclume)","tech":"Incus gauche","group":"incus","region":"head","sub":"ear","side":"L","en":"Left incus (anvil)"},{"id":"incus_r","name":"Incus droit (enclume)","tech":"Incus droit","group":"incus","region":"head","sub":"ear","side":"R","en":"Right incus (anvil)"},{"id":"stapes_l","name":"Stapes gauche (étrier)","tech":"Stapes gauche","group":"stapes","region":"head","sub":"ear","side":"L","en":"Left stapes (stirrup)"},{"id":"stapes_r","name":"Stapes droit (étrier)","tech":"Stapes droit","group":"stapes","region":"head","sub":"ear","side":"R","en":"Right stapes (stirrup)"},{"id":"c1","name":"Atlas (C1)","tech":"Atlas (C1)","group":"atlas","region":"torso","sub":"spine","side":"","en":"Atlas (C1)"},{"id":"c2","name":"Axis (C2)","tech":"Axis (C2)","group":"axis","region":"torso","sub":"spine","side":"","en":"Axis (C2)"},{"id":"c3","name":"Vertèbre C3","tech":"Vertèbre C3","group":"cervical","region":"torso","sub":"spine","side":"","en":"C3 vertebra"},{"id":"c4","name":"Vertèbre C4","tech":"Vertèbre C4","group":"cervical","region":"torso","sub":"spine","side":"","en":"C4 vertebra"},{"id":"c5","name":"Vertèbre C5","tech":"Vertèbre C5","group":"cervical","region":"torso","sub":"spine","side":"","en":"C5 vertebra"},{"id":"c6","name":"Vertèbre C6","tech":"Vertèbre C6","group":"cervical","region":"torso","sub":"spine","side":"","en":"C6 vertebra"},{"id":"c7","name":"Vertèbre C7","tech":"Vertèbre C7","group":"cervical","region":"torso","sub":"spine","side":"","en":"C7 vertebra"},{"id":"t1","name":"Vertèbre T1","tech":"Vertèbre T1","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T1 vertebra"},{"id":"t2","name":"Vertèbre T2","tech":"Vertèbre T2","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T2 vertebra"},{"id":"t3","name":"Vertèbre T3","tech":"Vertèbre T3","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T3 vertebra"},{"id":"t4","name":"Vertèbre T4","tech":"Vertèbre T4","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T4 vertebra"},{"id":"t5","name":"Vertèbre T5","tech":"Vertèbre T5","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T5 vertebra"},{"id":"t6","name":"Vertèbre T6","tech":"Vertèbre T6","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T6 vertebra"},{"id":"t7","name":"Vertèbre T7","tech":"Vertèbre T7","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T7 vertebra"},{"id":"t8","name":"Vertèbre T8","tech":"Vertèbre T8","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T8 vertebra"},{"id":"t9","name":"Vertèbre T9","tech":"Vertèbre T9","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T9 vertebra"},{"id":"t10","name":"Vertèbre T10","tech":"Vertèbre T10","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T10 vertebra"},{"id":"t11","name":"Vertèbre T11","tech":"Vertèbre T11","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T11 vertebra"},{"id":"t12","name":"Vertèbre T12","tech":"Vertèbre T12","group":"thoracic","region":"torso","sub":"spine","side":"","en":"T12 vertebra"},{"id":"l1","name":"Vertèbre L1","tech":"Vertèbre L1","group":"lumbar","region":"torso","sub":"spine","side":"","en":"L1 vertebra"},{"id":"l2","name":"Vertèbre L2","tech":"Vertèbre L2","group":"lumbar","region":"torso","sub":"spine","side":"","en":"L2 vertebra"},{"id":"l3","name":"Vertèbre L3","tech":"Vertèbre L3","group":"lumbar","region":"torso","sub":"spine","side":"","en":"L3 vertebra"},{"id":"l4","name":"Vertèbre L4","tech":"Vertèbre L4","group":"lumbar","region":"torso","sub":"spine","side":"","en":"L4 vertebra"},{"id":"l5","name":"Vertèbre L5","tech":"Vertèbre L5","group":"lumbar","region":"torso","sub":"spine","side":"","en":"L5 vertebra"},{"id":"sternum","name":"Sternum","tech":"Sternum","group":"sternum","region":"torso","sub":"ribcage","side":"","en":"Sternum (breastbone)"},{"id":"rib1_l","name":"1re côte gauche","tech":"1re côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 1st rib"},{"id":"rib1_r","name":"1re côte droite","tech":"1re côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 1st rib"},{"id":"rib2_l","name":"2e côte gauche","tech":"2e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 2nd rib"},{"id":"rib2_r","name":"2e côte droite","tech":"2e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 2nd rib"},{"id":"rib3_l","name":"3e côte gauche","tech":"3e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 3rd rib"},{"id":"rib3_r","name":"3e côte droite","tech":"3e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 3rd rib"},{"id":"rib4_l","name":"4e côte gauche","tech":"4e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 4th rib"},{"id":"rib4_r","name":"4e côte droite","tech":"4e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 4th rib"},{"id":"rib5_l","name":"5e côte gauche","tech":"5e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 5th rib"},{"id":"rib5_r","name":"5e côte droite","tech":"5e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 5th rib"},{"id":"rib6_l","name":"6e côte gauche","tech":"6e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 6th rib"},{"id":"rib6_r","name":"6e côte droite","tech":"6e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 6th rib"},{"id":"rib7_l","name":"7e côte gauche","tech":"7e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 7th rib"},{"id":"rib7_r","name":"7e côte droite","tech":"7e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 7th rib"},{"id":"rib8_l","name":"8e côte gauche","tech":"8e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 8th rib"},{"id":"rib8_r","name":"8e côte droite","tech":"8e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 8th rib"},{"id":"rib9_l","name":"9e côte gauche","tech":"9e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 9th rib"},{"id":"rib9_r","name":"9e côte droite","tech":"9e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 9th rib"},{"id":"rib10_l","name":"10e côte gauche","tech":"10e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 10th rib"},{"id":"rib10_r","name":"10e côte droite","tech":"10e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 10th rib"},{"id":"rib11_l","name":"11e côte gauche","tech":"11e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 11th rib"},{"id":"rib11_r","name":"11e côte droite","tech":"11e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 11th rib"},{"id":"rib12_l","name":"12e côte gauche","tech":"12e côte gauche","group":"rib","region":"torso","sub":"ribcage","side":"L","en":"Left 12th rib"},{"id":"rib12_r","name":"12e côte droite","tech":"12e côte droite","group":"rib","region":"torso","sub":"ribcage","side":"R","en":"Right 12th rib"},{"id":"hip_l","name":"Os coxal gauche (os de la hanche)","tech":"Os coxal gauche","group":"hip","region":"torso","sub":"pelvis","side":"L","en":"Left hip bone (coxal bone)"},{"id":"hip_r","name":"Os coxal droit (os de la hanche)","tech":"Os coxal droit","group":"hip","region":"torso","sub":"pelvis","side":"R","en":"Right hip bone (coxal bone)"},{"id":"sacrum","name":"Sacrum","tech":"Sacrum","group":"sacrum","region":"torso","sub":"pelvis","side":"","en":"Sacrum"},{"id":"coccyx","name":"Coccyx","tech":"Coccyx","group":"coccyx","region":"torso","sub":"pelvis","side":"","en":"Coccyx (tailbone)"},{"id":"clavicle_l","name":"Clavicule gauche","tech":"Clavicule gauche","group":"clavicle","region":"arm","sub":"shoulder","side":"L","en":"Left clavicle (collarbone)"},{"id":"clavicle_r","name":"Clavicule droite","tech":"Clavicule droite","group":"clavicle","region":"arm","sub":"shoulder","side":"R","en":"Right clavicle (collarbone)"},{"id":"scapula_l","name":"Scapula gauche (omoplate)","tech":"Scapula gauche","group":"scapula","region":"arm","sub":"shoulder","side":"L","en":"Left scapula (shoulder blade)"},{"id":"scapula_r","name":"Scapula droite (omoplate)","tech":"Scapula droite","group":"scapula","region":"arm","sub":"shoulder","side":"R","en":"Right scapula (shoulder blade)"},{"id":"humerus_l","name":"Humérus gauche","tech":"Humérus gauche","group":"humerus","region":"arm","sub":"armbones","side":"L","en":"Left humerus"},{"id":"humerus_r","name":"Humérus droit","tech":"Humérus droit","group":"humerus","region":"arm","sub":"armbones","side":"R","en":"Right humerus"},{"id":"radius_l","name":"Radius gauche","tech":"Radius gauche","group":"radius","region":"arm","sub":"armbones","side":"L","en":"Left radius"},{"id":"radius_r","name":"Radius droit","tech":"Radius droit","group":"radius","region":"arm","sub":"armbones","side":"R","en":"Right radius"},{"id":"ulna_l","name":"Ulna gauche (cubitus)","tech":"Ulna gauche","group":"ulna","region":"arm","sub":"armbones","side":"L","en":"Left ulna"},{"id":"ulna_r","name":"Ulna droite (cubitus)","tech":"Ulna droite","group":"ulna","region":"arm","sub":"armbones","side":"R","en":"Right ulna"},{"id":"scaphoid_l","name":"Scaphoïde gauche","tech":"Scaphoïde gauche","group":"scaphoid","region":"hand","sub":"carpals","side":"L","en":"Left scaphoid"},{"id":"scaphoid_r","name":"Scaphoïde droit","tech":"Scaphoïde droit","group":"scaphoid","region":"hand","sub":"carpals","side":"R","en":"Right scaphoid"},{"id":"lunate_l","name":"Lunatum gauche (semi-lunaire)","tech":"Lunatum gauche","group":"lunate","region":"hand","sub":"carpals","side":"L","en":"Left lunate"},{"id":"lunate_r","name":"Lunatum droit (semi-lunaire)","tech":"Lunatum droit","group":"lunate","region":"hand","sub":"carpals","side":"R","en":"Right lunate"},{"id":"triquetrum_l","name":"Triquetrum gauche (pyramidal)","tech":"Triquetrum gauche","group":"triquetrum","region":"hand","sub":"carpals","side":"L","en":"Left triquetrum"},{"id":"triquetrum_r","name":"Triquetrum droit (pyramidal)","tech":"Triquetrum droit","group":"triquetrum","region":"hand","sub":"carpals","side":"R","en":"Right triquetrum"},{"id":"pisiform_l","name":"Pisiforme gauche","tech":"Pisiforme gauche","group":"pisiform","region":"hand","sub":"carpals","side":"L","en":"Left pisiform"},{"id":"pisiform_r","name":"Pisiforme droit","tech":"Pisiforme droit","group":"pisiform","region":"hand","sub":"carpals","side":"R","en":"Right pisiform"},{"id":"hamate_l","name":"Hamatum gauche (os crochu)","tech":"Hamatum gauche","group":"hamate","region":"hand","sub":"carpals","side":"L","en":"Left hamate"},{"id":"hamate_r","name":"Hamatum droit (os crochu)","tech":"Hamatum droit","group":"hamate","region":"hand","sub":"carpals","side":"R","en":"Right hamate"},{"id":"capitate_l","name":"Capitatum gauche (grand os)","tech":"Capitatum gauche","group":"capitate","region":"hand","sub":"carpals","side":"L","en":"Left capitate"},{"id":"capitate_r","name":"Capitatum droit (grand os)","tech":"Capitatum droit","group":"capitate","region":"hand","sub":"carpals","side":"R","en":"Right capitate"},{"id":"trapezoid_l","name":"Trapézoïde gauche","tech":"Trapézoïde gauche","group":"trapezoid","region":"hand","sub":"carpals","side":"L","en":"Left trapezoid"},{"id":"trapezoid_r","name":"Trapézoïde droit","tech":"Trapézoïde droit","group":"trapezoid","region":"hand","sub":"carpals","side":"R","en":"Right trapezoid"},{"id":"trapezium_l","name":"Trapèze gauche","tech":"Trapèze gauche","group":"trapezium","region":"hand","sub":"carpals","side":"L","en":"Left trapezium"},{"id":"trapezium_r","name":"Trapèze droit","tech":"Trapèze droit","group":"trapezium","region":"hand","sub":"carpals","side":"R","en":"Right trapezium"},{"id":"mc1_l","name":"1er métacarpien gauche (pouce)","tech":"1er métacarpien gauche","group":"metacarpal","region":"hand","sub":"metacarpals","side":"L","en":"Left 1st metacarpal (thumb)"},{"id":"mc1_r","name":"1er métacarpien droit (pouce)","tech":"1er métacarpien droit","group":"metacarpal","region":"hand","sub":"metacarpals","side":"R","en":"Right 1st metacarpal (thumb)"},{"id":"mc2_l","name":"2e métacarpien gauche (index)","tech":"2e métacarpien gauche","group":"metacarpal","region":"hand","sub":"metacarpals","side":"L","en":"Left 2nd metacarpal (index finger)"},{"id":"mc2_r","name":"2e métacarpien droit (index)","tech":"2e métacarpien droit","group":"metacarpal","region":"hand","sub":"metacarpals","side":"R","en":"Right 2nd metacarpal (index finger)"},{"id":"mc3_l","name":"3e métacarpien gauche (majeur)","tech":"3e métacarpien gauche","group":"metacarpal","region":"hand","sub":"metacarpals","side":"L","en":"Left 3rd metacarpal (middle finger)"},{"id":"mc3_r","name":"3e métacarpien droit (majeur)","tech":"3e métacarpien droit","group":"metacarpal","region":"hand","sub":"metacarpals","side":"R","en":"Right 3rd metacarpal (middle finger)"},{"id":"mc4_l","name":"4e métacarpien gauche (annulaire)","tech":"4e métacarpien gauche","group":"metacarpal","region":"hand","sub":"metacarpals","side":"L","en":"Left 4th metacarpal (ring finger)"},{"id":"mc4_r","name":"4e métacarpien droit (annulaire)","tech":"4e métacarpien droit","group":"metacarpal","region":"hand","sub":"metacarpals","side":"R","en":"Right 4th metacarpal (ring finger)"},{"id":"mc5_l","name":"5e métacarpien gauche (auriculaire)","tech":"5e métacarpien gauche","group":"metacarpal","region":"hand","sub":"metacarpals","side":"L","en":"Left 5th metacarpal (little finger)"},{"id":"mc5_r","name":"5e métacarpien droit (auriculaire)","tech":"5e métacarpien droit","group":"metacarpal","region":"hand","sub":"metacarpals","side":"R","en":"Right 5th metacarpal (little finger)"},{"id":"pph1_hand_l","name":"Phalange proximale gauche — pouce","tech":"Phalange proximale gauche du 1er doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left proximal phalanx — thumb"},{"id":"pph1_hand_r","name":"Phalange proximale droite — pouce","tech":"Phalange proximale droite du 1er doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right proximal phalanx — thumb"},{"id":"pph2_hand_l","name":"Phalange proximale gauche — index","tech":"Phalange proximale gauche du 2e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left proximal phalanx — index finger"},{"id":"pph2_hand_r","name":"Phalange proximale droite — index","tech":"Phalange proximale droite du 2e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right proximal phalanx — index finger"},{"id":"pph3_hand_l","name":"Phalange proximale gauche — majeur","tech":"Phalange proximale gauche du 3e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left proximal phalanx — middle finger"},{"id":"pph3_hand_r","name":"Phalange proximale droite — majeur","tech":"Phalange proximale droite du 3e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right proximal phalanx — middle finger"},{"id":"pph4_hand_l","name":"Phalange proximale gauche — annulaire","tech":"Phalange proximale gauche du 4e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left proximal phalanx — ring finger"},{"id":"pph4_hand_r","name":"Phalange proximale droite — annulaire","tech":"Phalange proximale droite du 4e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right proximal phalanx — ring finger"},{"id":"pph5_hand_l","name":"Phalange proximale gauche — auriculaire","tech":"Phalange proximale gauche du 5e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left proximal phalanx — little finger"},{"id":"pph5_hand_r","name":"Phalange proximale droite — auriculaire","tech":"Phalange proximale droite du 5e doigt","group":"proximal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right proximal phalanx — little finger"},{"id":"mph2_hand_l","name":"Phalange moyenne gauche — index","tech":"Phalange moyenne gauche du 2e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left middle phalanx — index finger"},{"id":"mph2_hand_r","name":"Phalange moyenne droite — index","tech":"Phalange moyenne droite du 2e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right middle phalanx — index finger"},{"id":"mph3_hand_l","name":"Phalange moyenne gauche — majeur","tech":"Phalange moyenne gauche du 3e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left middle phalanx — middle finger"},{"id":"mph3_hand_r","name":"Phalange moyenne droite — majeur","tech":"Phalange moyenne droite du 3e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right middle phalanx — middle finger"},{"id":"mph4_hand_l","name":"Phalange moyenne gauche — annulaire","tech":"Phalange moyenne gauche du 4e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left middle phalanx — ring finger"},{"id":"mph4_hand_r","name":"Phalange moyenne droite — annulaire","tech":"Phalange moyenne droite du 4e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right middle phalanx — ring finger"},{"id":"mph5_hand_l","name":"Phalange moyenne gauche — auriculaire","tech":"Phalange moyenne gauche du 5e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left middle phalanx — little finger"},{"id":"mph5_hand_r","name":"Phalange moyenne droite — auriculaire","tech":"Phalange moyenne droite du 5e doigt","group":"middle_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right middle phalanx — little finger"},{"id":"dph1_hand_l","name":"Phalange distale gauche — pouce","tech":"Phalange distale gauche du 1er doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left distal phalanx — thumb"},{"id":"dph1_hand_r","name":"Phalange distale droite — pouce","tech":"Phalange distale droite du 1er doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right distal phalanx — thumb"},{"id":"dph2_hand_l","name":"Phalange distale gauche — index","tech":"Phalange distale gauche du 2e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left distal phalanx — index finger"},{"id":"dph2_hand_r","name":"Phalange distale droite — index","tech":"Phalange distale droite du 2e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right distal phalanx — index finger"},{"id":"dph3_hand_l","name":"Phalange distale gauche — majeur","tech":"Phalange distale gauche du 3e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left distal phalanx — middle finger"},{"id":"dph3_hand_r","name":"Phalange distale droite — majeur","tech":"Phalange distale droite du 3e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right distal phalanx — middle finger"},{"id":"dph4_hand_l","name":"Phalange distale gauche — annulaire","tech":"Phalange distale gauche du 4e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left distal phalanx — ring finger"},{"id":"dph4_hand_r","name":"Phalange distale droite — annulaire","tech":"Phalange distale droite du 4e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right distal phalanx — ring finger"},{"id":"dph5_hand_l","name":"Phalange distale gauche — auriculaire","tech":"Phalange distale gauche du 5e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"L","en":"Left distal phalanx — little finger"},{"id":"dph5_hand_r","name":"Phalange distale droite — auriculaire","tech":"Phalange distale droite du 5e doigt","group":"distal_ph_hand","region":"hand","sub":"fingers","side":"R","en":"Right distal phalanx — little finger"},{"id":"femur_l","name":"Fémur gauche (os de la cuisse)","tech":"Fémur gauche","group":"femur","region":"leg","sub":"thigh","side":"L","en":"Left femur (thigh bone)"},{"id":"femur_r","name":"Fémur droit (os de la cuisse)","tech":"Fémur droit","group":"femur","region":"leg","sub":"thigh","side":"R","en":"Right femur (thigh bone)"},{"id":"patella_l","name":"Patella gauche (rotule)","tech":"Patella gauche","group":"patella","region":"leg","sub":"thigh","side":"L","en":"Left patella (kneecap)"},{"id":"patella_r","name":"Patella droite (rotule)","tech":"Patella droite","group":"patella","region":"leg","sub":"thigh","side":"R","en":"Right patella (kneecap)"},{"id":"tibia_l","name":"Tibia gauche","tech":"Tibia gauche","group":"tibia","region":"leg","sub":"lowerleg","side":"L","en":"Left tibia (shin bone)"},{"id":"tibia_r","name":"Tibia droit","tech":"Tibia droit","group":"tibia","region":"leg","sub":"lowerleg","side":"R","en":"Right tibia (shin bone)"},{"id":"fibula_l","name":"Fibula gauche (péroné)","tech":"Fibula gauche","group":"fibula","region":"leg","sub":"lowerleg","side":"L","en":"Left fibula"},{"id":"fibula_r","name":"Fibula droite (péroné)","tech":"Fibula droite","group":"fibula","region":"leg","sub":"lowerleg","side":"R","en":"Right fibula"},{"id":"talus_l","name":"Talus gauche (astragale)","tech":"Talus gauche","group":"talus","region":"foot","sub":"tarsals","side":"L","en":"Left talus"},{"id":"talus_r","name":"Talus droit (astragale)","tech":"Talus droit","group":"talus","region":"foot","sub":"tarsals","side":"R","en":"Right talus"},{"id":"calcaneus_l","name":"Calcanéus gauche (os du talon)","tech":"Calcanéus gauche","group":"calcaneus","region":"foot","sub":"tarsals","side":"L","en":"Left calcaneus (heel bone)"},{"id":"calcaneus_r","name":"Calcanéus droit (os du talon)","tech":"Calcanéus droit","group":"calcaneus","region":"foot","sub":"tarsals","side":"R","en":"Right calcaneus (heel bone)"},{"id":"navicular_l","name":"Naviculaire gauche","tech":"Naviculaire gauche","group":"navicular","region":"foot","sub":"tarsals","side":"L","en":"Left navicular"},{"id":"navicular_r","name":"Naviculaire droit","tech":"Naviculaire droit","group":"navicular","region":"foot","sub":"tarsals","side":"R","en":"Right navicular"},{"id":"med_cuneiform_l","name":"Cunéiforme médial gauche","tech":"Cunéiforme médial gauche","group":"med_cuneiform","region":"foot","sub":"tarsals","side":"L","en":"Left medial cuneiform"},{"id":"med_cuneiform_r","name":"Cunéiforme médial droit","tech":"Cunéiforme médial droit","group":"med_cuneiform","region":"foot","sub":"tarsals","side":"R","en":"Right medial cuneiform"},{"id":"int_cuneiform_l","name":"Cunéiforme intermédiaire gauche","tech":"Cunéiforme intermédiaire gauche","group":"int_cuneiform","region":"foot","sub":"tarsals","side":"L","en":"Left intermediate cuneiform"},{"id":"int_cuneiform_r","name":"Cunéiforme intermédiaire droit","tech":"Cunéiforme intermédiaire droit","group":"int_cuneiform","region":"foot","sub":"tarsals","side":"R","en":"Right intermediate cuneiform"},{"id":"lat_cuneiform_l","name":"Cunéiforme latéral gauche","tech":"Cunéiforme latéral gauche","group":"lat_cuneiform","region":"foot","sub":"tarsals","side":"L","en":"Left lateral cuneiform"},{"id":"lat_cuneiform_r","name":"Cunéiforme latéral droit","tech":"Cunéiforme latéral droit","group":"lat_cuneiform","region":"foot","sub":"tarsals","side":"R","en":"Right lateral cuneiform"},{"id":"cuboid_l","name":"Cuboïde gauche","tech":"Cuboïde gauche","group":"cuboid","region":"foot","sub":"tarsals","side":"L","en":"Left cuboid"},{"id":"cuboid_r","name":"Cuboïde droit","tech":"Cuboïde droit","group":"cuboid","region":"foot","sub":"tarsals","side":"R","en":"Right cuboid"},{"id":"mt1_l","name":"1er métatarsien gauche (gros orteil)","tech":"1er métatarsien gauche","group":"metatarsal","region":"foot","sub":"metatarsals","side":"L","en":"Left 1st metatarsal (big toe)"},{"id":"mt1_r","name":"1er métatarsien droit (gros orteil)","tech":"1er métatarsien droit","group":"metatarsal","region":"foot","sub":"metatarsals","side":"R","en":"Right 1st metatarsal (big toe)"},{"id":"mt2_l","name":"2e métatarsien gauche (2e orteil)","tech":"2e métatarsien gauche","group":"metatarsal","region":"foot","sub":"metatarsals","side":"L","en":"Left 2nd metatarsal (2nd toe)"},{"id":"mt2_r","name":"2e métatarsien droit (2e orteil)","tech":"2e métatarsien droit","group":"metatarsal","region":"foot","sub":"metatarsals","side":"R","en":"Right 2nd metatarsal (2nd toe)"},{"id":"mt3_l","name":"3e métatarsien gauche (3e orteil)","tech":"3e métatarsien gauche","group":"metatarsal","region":"foot","sub":"metatarsals","side":"L","en":"Left 3rd metatarsal (3rd toe)"},{"id":"mt3_r","name":"3e métatarsien droit (3e orteil)","tech":"3e métatarsien droit","group":"metatarsal","region":"foot","sub":"metatarsals","side":"R","en":"Right 3rd metatarsal (3rd toe)"},{"id":"mt4_l","name":"4e métatarsien gauche (4e orteil)","tech":"4e métatarsien gauche","group":"metatarsal","region":"foot","sub":"metatarsals","side":"L","en":"Left 4th metatarsal (4th toe)"},{"id":"mt4_r","name":"4e métatarsien droit (4e orteil)","tech":"4e métatarsien droit","group":"metatarsal","region":"foot","sub":"metatarsals","side":"R","en":"Right 4th metatarsal (4th toe)"},{"id":"mt5_l","name":"5e métatarsien gauche (petit orteil)","tech":"5e métatarsien gauche","group":"metatarsal","region":"foot","sub":"metatarsals","side":"L","en":"Left 5th metatarsal (little toe)"},{"id":"mt5_r","name":"5e métatarsien droit (petit orteil)","tech":"5e métatarsien droit","group":"metatarsal","region":"foot","sub":"metatarsals","side":"R","en":"Right 5th metatarsal (little toe)"},{"id":"pph1_foot_l","name":"Phalange proximale gauche — gros orteil","tech":"Phalange proximale gauche du 1er orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left proximal phalanx — big toe"},{"id":"pph1_foot_r","name":"Phalange proximale droite — gros orteil","tech":"Phalange proximale droite du 1er orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right proximal phalanx — big toe"},{"id":"pph2_foot_l","name":"Phalange proximale gauche — 2e orteil","tech":"Phalange proximale gauche du 2e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left proximal phalanx — 2nd toe"},{"id":"pph2_foot_r","name":"Phalange proximale droite — 2e orteil","tech":"Phalange proximale droite du 2e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right proximal phalanx — 2nd toe"},{"id":"pph3_foot_l","name":"Phalange proximale gauche — 3e orteil","tech":"Phalange proximale gauche du 3e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left proximal phalanx — 3rd toe"},{"id":"pph3_foot_r","name":"Phalange proximale droite — 3e orteil","tech":"Phalange proximale droite du 3e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right proximal phalanx — 3rd toe"},{"id":"pph4_foot_l","name":"Phalange proximale gauche — 4e orteil","tech":"Phalange proximale gauche du 4e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left proximal phalanx — 4th toe"},{"id":"pph4_foot_r","name":"Phalange proximale droite — 4e orteil","tech":"Phalange proximale droite du 4e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right proximal phalanx — 4th toe"},{"id":"pph5_foot_l","name":"Phalange proximale gauche — petit orteil","tech":"Phalange proximale gauche du 5e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left proximal phalanx — little toe"},{"id":"pph5_foot_r","name":"Phalange proximale droite — petit orteil","tech":"Phalange proximale droite du 5e orteil","group":"proximal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right proximal phalanx — little toe"},{"id":"mph2_foot_l","name":"Phalange moyenne gauche — 2e orteil","tech":"Phalange moyenne gauche du 2e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left middle phalanx — 2nd toe"},{"id":"mph2_foot_r","name":"Phalange moyenne droite — 2e orteil","tech":"Phalange moyenne droite du 2e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right middle phalanx — 2nd toe"},{"id":"mph3_foot_l","name":"Phalange moyenne gauche — 3e orteil","tech":"Phalange moyenne gauche du 3e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left middle phalanx — 3rd toe"},{"id":"mph3_foot_r","name":"Phalange moyenne droite — 3e orteil","tech":"Phalange moyenne droite du 3e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right middle phalanx — 3rd toe"},{"id":"mph4_foot_l","name":"Phalange moyenne gauche — 4e orteil","tech":"Phalange moyenne gauche du 4e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left middle phalanx — 4th toe"},{"id":"mph4_foot_r","name":"Phalange moyenne droite — 4e orteil","tech":"Phalange moyenne droite du 4e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right middle phalanx — 4th toe"},{"id":"mph5_foot_l","name":"Phalange moyenne gauche — petit orteil","tech":"Phalange moyenne gauche du 5e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left middle phalanx — little toe"},{"id":"mph5_foot_r","name":"Phalange moyenne droite — petit orteil","tech":"Phalange moyenne droite du 5e orteil","group":"middle_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right middle phalanx — little toe"},{"id":"dph1_foot_l","name":"Phalange distale gauche — gros orteil","tech":"Phalange distale gauche du 1er orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left distal phalanx — big toe"},{"id":"dph1_foot_r","name":"Phalange distale droite — gros orteil","tech":"Phalange distale droite du 1er orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right distal phalanx — big toe"},{"id":"dph2_foot_l","name":"Phalange distale gauche — 2e orteil","tech":"Phalange distale gauche du 2e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left distal phalanx — 2nd toe"},{"id":"dph2_foot_r","name":"Phalange distale droite — 2e orteil","tech":"Phalange distale droite du 2e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right distal phalanx — 2nd toe"},{"id":"dph3_foot_l","name":"Phalange distale gauche — 3e orteil","tech":"Phalange distale gauche du 3e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left distal phalanx — 3rd toe"},{"id":"dph3_foot_r","name":"Phalange distale droite — 3e orteil","tech":"Phalange distale droite du 3e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right distal phalanx — 3rd toe"},{"id":"dph4_foot_l","name":"Phalange distale gauche — 4e orteil","tech":"Phalange distale gauche du 4e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left distal phalanx — 4th toe"},{"id":"dph4_foot_r","name":"Phalange distale droite — 4e orteil","tech":"Phalange distale droite du 4e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right distal phalanx — 4th toe"},{"id":"dph5_foot_l","name":"Phalange distale gauche — petit orteil","tech":"Phalange distale gauche du 5e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"L","en":"Left distal phalanx — little toe"},{"id":"dph5_foot_r","name":"Phalange distale droite — petit orteil","tech":"Phalange distale droite du 5e orteil","group":"distal_ph_foot","region":"foot","sub":"toes","side":"R","en":"Right distal phalanx — little toe"}],"context":{"cc1_l":["cartilage","torso","ribcage","L"],"cc1_r":["cartilage","torso","ribcage","R"],"cc2_l":["cartilage","torso","ribcage","L"],"cc2_r":["cartilage","torso","ribcage","R"],"cc3_l":["cartilage","torso","ribcage","L"],"cc3_r":["cartilage","torso","ribcage","R"],"cc4_l":["cartilage","torso","ribcage","L"],"cc4_r":["cartilage","torso","ribcage","R"],"cc5_l":["cartilage","torso","ribcage","L"],"cc5_r":["cartilage","torso","ribcage","R"],"cc6_l":["cartilage","torso","ribcage","L"],"cc6_r":["cartilage","torso","ribcage","R"],"cc7_l":["cartilage","torso","ribcage","L"],"cc7_r":["cartilage","torso","ribcage","R"],"cc8_l":["cartilage","torso","ribcage","L"],"cc8_r":["cartilage","torso","ribcage","R"],"cc9_l":["cartilage","torso","ribcage","L"],"cc9_r":["cartilage","torso","ribcage","R"],"cc10_l":["cartilage","torso","ribcage","L"],"cc10_r":["cartilage","torso","ribcage","R"],"disc_c2_c3":["disc","torso","spine",""],"disc_c3_c4":["disc","torso","spine",""],"disc_c4_c5":["disc","torso","spine",""],"disc_c5_c6":["disc","torso","spine",""],"disc_c6_c7":["disc","torso","spine",""],"disc_c7_t1":["disc","torso","spine",""],"disc_t1_t2":["disc","torso","spine",""],"disc_t2_t3":["disc","torso","spine",""],"disc_t3_t4":["disc","torso","spine",""],"disc_t4_t5":["disc","torso","spine",""],"disc_t5_t6":["disc","torso","spine",""],"disc_t6_t7":["disc","torso","spine",""],"disc_t7_t8":["disc","torso","spine",""],"disc_t8_t9":["disc","torso","spine",""],"disc_t9_t10":["disc","torso","spine",""],"disc_t10_t11":["disc","torso","spine",""],"disc_t11_t12":["disc","torso","spine",""],"disc_t12_l1":["disc","torso","spine",""],"disc_l1_l2":["disc","torso","spine",""],"disc_l2_l3":["disc","torso","spine",""],"disc_l3_l4":["disc","torso","spine",""],"disc_l4_l5":["disc","torso","spine",""],"disc_l5_s1":["disc","torso","spine",""],"interpubic_disc":["disc","torso","pelvis",""],"tooth_upper_medial_incisor_l":["tooth","head","face","L"],"tooth_upper_medial_incisor_r":["tooth","head","face","R"],"tooth_upper_lateral_incisor_l":["tooth","head","face","L"],"tooth_upper_lateral_incisor_r":["tooth","head","face","R"],"tooth_upper_canine_l":["tooth","head","face","L"],"tooth_upper_canine_r":["tooth","head","face","R"],"tooth_upper_first_premolar_l":["tooth","head","face","L"],"tooth_upper_first_premolar_r":["tooth","head","face","R"],"tooth_upper_second_premolar_l":["tooth","head","face","L"],"tooth_upper_second_premolar_r":["tooth","head","face","R"],"tooth_upper_first_molar_tooth_l":["tooth","head","face","L"],"tooth_upper_first_molar_tooth_r":["tooth","head","face","R"],"tooth_upper_second_molar_tooth_l":["tooth","head","face","L"],"tooth_upper_second_molar_tooth_r":["tooth","head","face","R"],"tooth_lower_medial_incisor_l":["tooth","head","face","L"],"tooth_lower_medial_incisor_r":["tooth","head","face","R"],"tooth_lower_lateral_incisor_l":["tooth","head","face","L"],"tooth_lower_lateral_incisor_r":["tooth","head","face","R"],"tooth_lower_canine_l":["tooth","head","face","L"],"tooth_lower_canine_r":["tooth","head","face","R"],"tooth_lower_first_premolar_l":["tooth","head","face","L"],"tooth_lower_first_premolar_r":["tooth","head","face","R"],"tooth_lower_second_premolar_l":["tooth","head","face","L"],"tooth_lower_second_premolar_r":["tooth","head","face","R"],"tooth_lower_first_molar_tooth_l":["tooth","head","face","L"],"tooth_lower_first_molar_tooth_r":["tooth","head","face","R"],"tooth_lower_second_molar_tooth_l":["tooth","head","face","L"],"tooth_lower_second_molar_tooth_r":["tooth","head","face","R"]}};
+// The model ships as a .glb on a normal website. Where only text files can be hosted it ships as
+// base64 text ('…-glb.txt'), which is decoded here before parsing.
+const MODEL_URL = 'skeleton.glb';
+// Copy without its own skeleton.glb next to it: load the original site's model.
+const MODEL_URL_FALLBACK = 'https://samplesize1.com/tools/bone-atlas/skeleton.glb';
+const MODEL_BYTES = 5602552;
+const $ = (id) => document.getElementById(id);
+
+/* ---------------- storage (per-browser, optional) ---------------- */
+// Saved through the site-wide helper (/js/progress.js) under 'bone-atlas'. Scores saved under the
+// tool's first name ('the206.') move over the first time. If the helper can't load (e.g. this page
+// opened on its own), it saves straight to this browser under the old name instead.
+const store = window.SiteProgress ? SiteProgress.tool('bone-atlas', { legacyPrefix: 'the206.' }) : {
+  get(k, d) { try { const v = localStorage.getItem('the206.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('the206.' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+};
+
+/* ---------------- data lookups ---------------- */
+const REGION = Object.fromEntries(DATA.regions.map(r => [r.key, r]));
+const SUB = {};
+for (const r of DATA.regions) for (const s of r.subs) SUB[s.key] = { ...s, region: r.key };
+const BONE = Object.fromEntries(DATA.bones.map(b => [b.id, b]));
+const CONTEXT_NOTE = {
+  tooth: 'C’est une dent. Les dents ne sont pas des os : elles ne font pas partie des 206.',
+  cartilage: 'C’est du cartilage costal, qui relie une côte au sternum. Ce n’est pas de l’os.',
+  disc: 'C’est un disque de cartilage entre deux os, pas un os.',
+};
+// Which non-bone pieces catch clicks (and show the note above). Cartilage and discs are see-through, so clicks
+// and hover pass straight through them to the bone behind. Teeth are solid, so they still catch clicks: letting
+// a click through a tooth would pick a bone you can't see. Set a kind to true to make it clickable again.
+const CONTEXT_CLICKABLE = { cartilage: false, disc: false, tooth: true };
+
+/* ---------------- state ---------------- */
+const MODE_ALIASES = { learn: 'practice', explore: 'study' };
+const state = {
+  mode: MODE_ALIASES[store.get('mode', 'study')] || store.get('mode', 'study'),
+  set: store.get('set', 'names'),
+  section: store.get('section', 'all'),   // 'all' | region | 'region/sub'
+  hints: store.get('hints', true) !== false,
+  view: 'all', viewSide: 'both',          // camera zoom: an area and side to look at, separate from what is being quizzed
+  xray: false, peel: false, clean: false,
+  hidden: new Set(),
+};
+if (!['study', 'practice', 'test'].includes(state.mode)) state.mode = 'study';
+if (!['names', 'all'].includes(state.set)) state.set = 'names';
+if (!validSection(state.section)) state.section = 'all';
+
+function parseSection(sec) {
+  if (!sec || sec === 'all') return {};
+  const [region, sub] = sec.split('/');
+  return { region, sub };
+}
+function validSection(sec) {
+  if (sec === 'all') return true;
+  const p = parseSection(sec);
+  return !!REGION[p.region] && (!p.sub || (SUB[p.sub] && SUB[p.sub].region === p.region));
+}
+function inSection(d, sec = state.section) {
+  if (sec === 'all') return true;
+  const p = parseSection(sec);
+  return d.region === p.region && (!p.sub || d.sub === p.sub);
+}
+function inSide(d, side) { return side === 'both' || !d.side || d.side === (side === 'left' ? 'L' : 'R'); }
+// Quizzes always cover both sides. Left / right is a view setting (the Side control in the View card).
+function inScope(d, sec = state.section) { return inSection(d, sec); }
+const ZOOMS = [
+  { key: 'all', sec: 'all', label: 'Corps entier' },
+  { key: 'head', sec: 'head', label: 'Tête', fem: true, lateral: true },
+  { key: 'ears', sec: 'head/ear', label: 'Oreilles', one: 'Oreille', fem: true, lateral: true },
+  { key: 'spine', sec: 'torso/spine', label: 'Colonne', fem: true },
+  { key: 'ribcage', sec: 'torso/ribcage', label: 'Thorax' },
+  { key: 'pelvis', sec: 'torso/pelvis', label: 'Bassin' },
+  { key: 'arms', sec: 'arm', label: 'Bras', one: 'Bras' },
+  { key: 'hands', sec: 'hand', label: 'Mains', one: 'Main', fem: true },
+  { key: 'legs', sec: 'leg', label: 'Jambes', one: 'Jambe', fem: true },
+  { key: 'feet', sec: 'foot', label: 'Pieds', one: 'Pied', top: true },
+];
+// Voice-only zooms: parts of the spine. No chip or number key; while one is on, the Spine chip shows as pressed.
+// Vertebrae are c1–c7, t1–t12, l1–l5; each disc goes with the vertebra above it (disc_c7_t1 is cervical).
+const spineSeg = (d) => { const m = /^(?:disc_)?([ctl])\d/.exec(d.id || ''); return m ? m[1] : null; };
+const ZOOMS_VOICE = [
+  { key: 'cervical', sec: 'torso/spine', match: (d) => spineSeg(d) === 'c', label: 'Colonne cervicale', fem: true, parent: 'spine' },
+  { key: 'thoracic', sec: 'torso/spine', match: (d) => spineSeg(d) === 't', label: 'Colonne thoracique', fem: true, parent: 'spine' },
+  { key: 'lumbar', sec: 'torso/spine', match: (d) => spineSeg(d) === 'l', label: 'Colonne lombaire', fem: true, parent: 'spine' },
+];
+const ZOOM = Object.fromEntries([...ZOOMS, ...ZOOMS_VOICE].map(z => [z.key, z]));
+function inView(d, key = state.view, side = state.viewSide) {
+  const z = ZOOM[key];
+  return inSection(d, z.sec) && (!z.match || z.match(d)) && inSide(d, side);
+}
+function zoomed() { return state.view !== 'all' || state.viewSide !== 'both'; }
+function viewLabel(key = state.view, side = state.viewSide) {
+  const z = ZOOM[key];
+  if (side === 'both') return z.label;
+  if (z.one) return `${z.one} ${side === 'left' ? 'gauche' : z.fem ? 'droite' : 'droit'}`;
+  return `${z.label}, côté ${side === 'left' ? 'gauche' : 'droit'}`;
+}
+function sectionLabel(sec = state.section) {
+  if (sec === 'all') return 'Corps entier';
+  const p = parseSection(sec);
+  return p.sub ? `${REGION[p.region].label} · ${SUB[p.sub].label}` : REGION[p.region].label;
+}
+function sectionTip(sec = state.section) { const p = parseSection(sec); return DATA.tips[p.sub || p.region || 'all'] || ''; }
+
+/* ---------------- three.js setup ---------------- */
+const canvas = $('c');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+} catch (e) {
+  $('loadMsg').textContent = 'Les graphismes 3D (WebGL) sont désactivés ou indisponibles dans ce navigateur : le squelette ne peut pas être affiché. Dans Firefox, vérifiez que webgl.disabled vaut false dans about:config et que l’accélération matérielle est activée.';
+  window.__the206Fatal = true;
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.5;
+
+const camera = new THREE.PerspectiveCamera(32, 1, 0.005, 40);
+scene.add(camera);
+// Studio lights ride with the camera so every angle is lit the same way.
+const key = new THREE.DirectionalLight(0xfff3e2, 1.9); key.position.set(0.9, 1.3, 1.0);
+const rim = new THREE.DirectionalLight(0x86dcf0, 1.4); rim.position.set(-1.2, 0.6, -1.4);
+const lightTarget = new THREE.Object3D(); lightTarget.position.set(0, 0, -1);
+key.target = lightTarget; rim.target = lightTarget;
+camera.add(key, rim, lightTarget);
+scene.add(new THREE.HemisphereLight(0xe4ecf2, 0x161e25, 0.55));
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.09;
+controls.zoomToCursor = true;
+controls.minDistance = 0.05;
+controls.maxDistance = 6;
+controls.rotateSpeed = 0.75;
+controls.screenSpacePanning = true;
+camera.position.set(0, 1.0, 4.2);
+controls.target.set(0, 0.85, 0);
+
+/* platform: radiograph-style floor with L / R markers (anatomical left/right) */
+function makePlatform() {
+  const S = 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const g = cv.getContext('2d'), c = S / 2;
+  const grad = g.createRadialGradient(c, c, 0, c, c, c);
+  grad.addColorStop(0, 'rgba(111,208,232,0.16)'); grad.addColorStop(0.55, 'rgba(111,208,232,0.05)'); grad.addColorStop(1, 'rgba(111,208,232,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, S, S);
+  g.strokeStyle = 'rgba(140,200,220,0.28)'; g.lineWidth = 2;
+  for (const r of [0.62, 0.86]) { g.beginPath(); g.arc(c, c, c * r, 0, Math.PI * 2); g.stroke(); }
+  for (let a = 0; a < 360; a += 10) {
+    const rad = a * Math.PI / 180, r1 = c * 0.86, r2 = c * (a % 30 === 0 ? 0.81 : 0.835);
+    g.beginPath(); g.moveTo(c + Math.cos(rad) * r1, c + Math.sin(rad) * r1); g.lineTo(c + Math.cos(rad) * r2, c + Math.sin(rad) * r2); g.stroke();
+  }
+  const marker = (txt, x, y) => {
+    g.save(); g.translate(x, y);
+    g.fillStyle = 'rgba(236,222,194,0.92)'; g.fillRect(-34, -34, 68, 68);
+    g.fillStyle = '#0a0f14'; g.font = '800 50px Archivo, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(txt, 0, 3); g.restore();
+  };
+  marker('G', c + c * 0.74, c);   // +X = the skeleton's left
+  marker('D', c - c * 0.74, c);   // -X = the skeleton's right
+  g.fillStyle = 'rgba(160,190,205,0.75)'; g.font = '600 26px "IBM Plex Mono", monospace'; g.textAlign = 'center';
+  g.fillText('ANTÉRIEUR', c, c + c * 0.75);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.002; m.renderOrder = -1;
+  return m;
+}
+scene.add(makePlatform());
+
+/* ---------------- materials ---------------- */
+const COL = { bone: 0xe6d9bf, scan: new THREE.Color(0x6fd0e8), ok: new THREE.Color(0x4fd18f), bad: new THREE.Color(0xff6a5a) };
+const overlayMat = new THREE.MeshBasicMaterial({ color: 0x6fd0e8, transparent: true, opacity: 0.5, depthTest: false, depthWrite: false });
+const ctxMats = {
+  cartilage: new THREE.MeshStandardMaterial({ color: 0xa8c7d3, roughness: 0.4, transparent: true, opacity: 0.55, depthWrite: false }),
+  disc: new THREE.MeshStandardMaterial({ color: 0x93b4c1, roughness: 0.45, transparent: true, opacity: 0.6, depthWrite: false }),
+  tooth: new THREE.MeshStandardMaterial({ color: 0xf4f0e8, roughness: 0.3 }),
+};
+
+/* ---------------- model ---------------- */
+const bones = new Map();        // id -> record
+const ctxPieces = [];           // context meshes
+let pickables = [], blockers = [], liveMeshes = [];
+// bones/pieces between the camera and the bone being shown get faded so it is never buried (Study and Practice reveal)
+const occ = { recs: new Set(), ctx: new Set(), key: '' };
+let modelBox = new THREE.Box3();
+
+function boneRecord(mesh, data) {
+  mesh.geometry.computeBoundingSphere();
+  const sphere = mesh.geometry.boundingSphere.clone().applyMatrix4(mesh.matrixWorld);
+  const mat = new THREE.MeshStandardMaterial({ color: COL.bone, roughness: 0.6, metalness: 0, envMapIntensity: 0.9 });
+  mesh.material = mat;
+  const overlay = new THREE.Mesh(mesh.geometry, overlayMat);
+  overlay.visible = false; overlay.renderOrder = 10; overlay.raycast = () => {};
+  mesh.add(overlay);
+  // anchor = the surface point nearest the bone's centre, so callout lines land on bone (not in the middle of a rib's curve)
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3(), anchor = new THREE.Vector3();
+  let best = Infinity; const step = Math.max(1, Math.floor(pos.count / 600));
+  for (let i = 0; i < pos.count; i += step) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+    const d = v.distanceToSquared(sphere.center); if (d < best) { best = d; anchor.copy(v); }
+  }
+  const rec = { id: data.id, data, mesh, mat, overlay, center: sphere.center, radius: sphere.radius, anchor, flash: null };
+  mesh.userData.rec = rec;
+  return rec;
+}
+
+/* ---------------- items (what gets studied or quizzed) ---------------- */
+function buildItems(sec = state.section) {
+  if (state.set === 'all') {
+    return sideBySide(DATA.bones.filter(b => inScope(b, sec))).map(b => ({ key: b.id, name: label(b), accept: new Set([b.id]) }));
+  }
+  const out = [];
+  for (const [k, g] of Object.entries(DATA.groups)) {
+    const acc = g.members.filter(id => inScope(BONE[id], sec));
+    if (acc.length) out.push({ key: k, name: label(g), accept: new Set(acc) });
+  }
+  return out;
+}
+function countFor(sec) { return buildItems(sec).length; }
+// In the areas the camera frames one side at a time (ear bones, hands, feet) the order goes through the whole left
+// side, then the right, instead of flipping sides on every step. Elsewhere left / right pairs stay together.
+function sideBySide(list) {
+  const first = {};
+  list.forEach((b, i) => { const k = areaFor(b).key; if (!(k in first)) first[k] = i; });
+  const rank = (b, i) => { const k = areaFor(b).key; return [first[k], ONE_SIDE_AREAS.has(k) && b.side === 'R' ? 1 : 0, i]; };
+  return list.map((b, i) => [b, rank(b, i)]).sort((x, y) => x[1][0] - y[1][0] || x[1][1] - y[1][1] || x[1][2] - y[1][2]).map(x => x[0]);
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function lowerFirst(s) { return s.replace(/^([A-Z])(?=[a-z])/, c => c.toLowerCase()); }
+// Hints on: everyday helpers ("Patella (kneecap)", "5th metacarpal (little finger)").
+// Hints off: the technical name ("Patella", "5th metacarpal", "distal phalanx of the 5th toe").
+function label(o) { return state.hints ? o.name : (o.tech || o.name); }
+function itemLabel(key) { return label(state.set === 'all' ? BONE[key] : DATA.groups[key]); }
+function nameFor(rec) { return lowerFirst(state.set === 'names' ? label(DATA.groups[rec.data.group]) : label(rec.data)); }
+function itemFor(rec, items) { return items.find(it => it.accept.has(rec.id)); }
+
+/* ---------------- highlight (glow through other bones) ---------------- */
+let glowing = [];
+function setGlow(ids) {
+  for (const r of glowing) r.overlay.visible = false;
+  glowing = [...ids].map(id => bones.get(id)).filter(Boolean);
+  let unhid = false;
+  for (const r of glowing) { if (state.hidden.delete(r.id)) unhid = true; r.overlay.visible = true; }
+  if (unhid) applyVisibility();
+}
+function flash(rec, kind) { rec.flash = { color: kind === 'ok' ? COL.ok : COL.bad, t0: performance.now(), dur: kind === 'ok' ? 650 : 900 }; }
+
+/* callout: which item is labelled on the model right now, and which member it points at */
+const callout = { item: null, anchorId: null };
+function setCallout(item, anchorId) {
+  callout.item = item; callout.anchorId = anchorId || null;
+  $('callout').textContent = item ? item.name : '';
+}
+
+/* ---------------- study mode ---------------- */
+let study = null;
+function startStudy() {
+  study = { items: buildItems(), index: 0 };
+  showStudyItem(false);
+}
+function showStudyItem(moveCamera = true, anchorId = null) {
+  if (!study || !study.items.length) { setGlow([]); setCallout(null); renderPrompt(); return; }
+  const it = study.items[study.index];
+  ensureInView(it.accept);
+  setGlow(it.accept);
+  setCallout(it, anchorId);
+  if (moveCamera) showBones([...it.accept].map(id => bones.get(id)).filter(Boolean));
+  renderPrompt();
+}
+function studyStep(d) {
+  if (state.mode !== 'study' || !study || !study.items.length) return;
+  study.index = (study.index + d + study.items.length) % study.items.length;
+  showStudyItem(true);
+}
+
+/* ---------------- quiz session (practice / test) ---------------- */
+let session = null, sessionSeq = 0, review = null;
+function startSession(onlyKeys) {
+  clearQuizVisuals();
+  clearReview();
+  if (state.mode === 'study') { session = null; startStudy(); renderStats(); return; }
+  study = null;
+  let items = buildItems();
+  if (onlyKeys) items = items.filter(it => onlyKeys.includes(it.key));
+  shuffle(items);
+  if (state.mode === 'practice') {
+    const hist = store.get('stats', {});
+    const weak = (it) => { const h = hist[it.key]; return h ? h[1] - h[0] * 0.5 : 0; };
+    items = items.map((it, i) => [it, weak(it), i]).sort((a, b) => (b[1] - a[1]) || (a[2] - b[2])).map(x => x[0]);
+  }
+  session = {
+    id: ++sessionSeq, busy: false, items, queue: items.slice(), total: items.length, done: 0, attempts: 0, correct: 0,
+    streak: 0, start: performance.now(), end: null, current: null, phase: 'ask', everMissed: new Set(),
+  };
+  renderStats();
+  nextItem();
+}
+function clearQuizVisuals() { setGlow([]); setCallout(null); }
+function later(ms) {
+  const id = session && session.id;
+  setTimeout(() => { if (session && session.id === id) nextItem(); }, ms);
+}
+function nextItem() {
+  if (!session) return;
+  clearQuizVisuals();
+  session.busy = false;
+  if (!session.queue.length) return finishSession();
+  session.current = session.queue.shift();
+  session.phase = 'ask';
+  renderPrompt();
+}
+function recordStat(key, ok) {
+  const hist = store.get('stats', {});
+  const h = hist[key] || [0, 0]; h[ok ? 0 : 1]++; hist[key] = h; store.set('stats', hist);
+}
+function answer(rec) {
+  if (!session || !session.current || session.busy) return;
+  const cur = session.current, hit = cur.accept.has(rec.id);
+  if (session.phase === 'reveal') {
+    if (hit) { flash(rec, 'ok'); clearQuizVisuals(); session.busy = true; later(350); }
+    else { flash(rec, 'bad'); toast(`Ça, c’est : ${nameFor(rec)}. Cliquez sur l’os qui brille.`, 'bad'); }
+    return;
+  }
+  session.attempts++;
+  if (hit) {
+    session.correct++; session.streak++; session.done++;
+    recordStat(cur.key, true);
+    flash(rec, 'ok'); pulsePrompt('ok');
+    renderStats(); renderPrompt();
+    session.busy = true;
+    later(state.mode === 'test' ? 260 : 420);
+  } else {
+    session.streak = 0;
+    recordStat(cur.key, false);
+    flash(rec, 'bad'); pulsePrompt('bad');
+    toast(`Ça, c’est : ${nameFor(rec)}.`, 'bad');
+    miss(cur, rec);
+  }
+  renderStats();
+}
+function miss(cur, clickedRec) {
+  session.everMissed.add(cur.key);
+  if (state.mode === 'test') { session.busy = true; later(clickedRec ? 650 : 200); return; }
+  // Practice: show where it is, make them click it, and bring it back a few questions later.
+  session.queue.splice(Math.min(3, session.queue.length), 0, cur);
+  session.phase = 'reveal';
+  const members = [...cur.accept].map(id => bones.get(id)).filter(Boolean);
+  let near = members[0];
+  if (clickedRec && members.length > 1) near = members.reduce((b, r) => r.center.distanceTo(clickedRec.center) < b.center.distanceTo(clickedRec.center) ? r : b, members[0]);
+  ensureInView(cur.accept);
+  setGlow(cur.accept);
+  setCallout(cur, near && near.id);
+  showBones(members, near);
+  renderPrompt();
+}
+function skip() {
+  if (state.mode === 'study' || !session || !session.current || session.busy) return;
+  if (session.phase === 'reveal') { clearQuizVisuals(); nextItem(); return; }
+  session.attempts++; session.streak = 0;
+  recordStat(session.current.key, false);
+  miss(session.current, null);
+  renderStats();
+}
+function finishSession() {
+  session.end = performance.now();
+  session.current = null;
+  const ms = session.end - session.start;
+  const firstTry = session.total - session.everMissed.size;
+  const acc = session.attempts ? Math.round(100 * session.correct / session.attempts) : 0;
+  const k = bestKey();
+  const bestAll = store.get('best', {});
+  const prev = bestAll[k];
+  const scoreNow = state.mode === 'test' ? session.correct : firstTry;
+  if (!prev || scoreNow > prev.score || (scoreNow === prev.score && ms < prev.ms)) {
+    bestAll[k] = { score: scoreNow, total: session.total, ms }; store.set('best', bestAll);
+  }
+  const best = bestAll[k];
+  // Colour every bone in the selection by how it went: right first time vs missed (or needed help in Practice).
+  const status = new Map();
+  for (const it of session.items) {
+    const ok = !session.everMissed.has(it.key);
+    for (const id of it.accept) status.set(id, ok ? 'ok' : 'bad');
+  }
+  const missedItems = session.items.filter(it => session.everMissed.has(it.key));
+  review = { status, ok: scoreNow, bad: session.total - scoreNow, acc, ms, best, missedKeys: missedItems.map(it => it.key) };
+  applyReviewColors();
+  $('rOk').textContent = review.ok; $('rBad').textContent = review.bad;
+  $('rOkLabel').textContent = state.mode === 'test' ? 'réussis' : 'du premier coup';
+  $('rBadLabel').textContent = state.mode === 'test' ? 'ratés' : 'avec aide';
+  $('rPractice').hidden = !missedItems.length;
+  renderPrompt(); renderStats(); renderBest();
+  $('sTime').textContent = fmtTime(ms);
+  frameSection();
+}
+function clearReview() {
+  if (!review) return;
+  review = null;
+  for (const r of bones.values()) { r.mat.color.setHex(COL.bone); r.tint = null; }
+  $('review').hidden = true; $('pBarWrap').hidden = false; $('skipBtn').hidden = state.mode === 'study';
+  setCallout(null);
+}
+const TINT = { ok: new THREE.Color(0x46c98a), bad: new THREE.Color(0xf2665a) };
+function applyReviewColors() {
+  for (const r of bones.values()) {
+    const st = review && review.status.get(r.id);
+    r.tint = st ? TINT[st] : null;
+    if (st) r.mat.color.setHex(COL.bone).lerp(TINT[st], 0.78); else r.mat.color.setHex(COL.bone);
+  }
+}
+function reviewPick(rec) {
+  const st = review.status.get(rec.id);
+  if (!st) return;
+  const text = `${label(rec.data)} : ${st === 'ok' ? (state.mode === 'test' ? 'réussi' : 'du premier coup') : (state.mode === 'test' ? 'raté' : 'avec aide')}`;
+  setCallout({ name: text, accept: new Set([rec.id]) }, rec.id);
+}
+$('rAgain').addEventListener('click', () => startSession());
+$('rPractice').addEventListener('click', () => {
+  const keys = review ? review.missedKeys.slice() : [];
+  setMode('practice', false); startSession(keys);
+});
+// '|both' is left over from when a quiz could cover one side only; keeping it keeps earlier best scores.
+function bestKey() { return `${state.mode}|${state.set}|${state.section}|both` + (state.hints ? '' : '|nohints'); }
+
+/* ---------------- visibility (region, side, x-ray, peel) ---------------- */
+function applyVisibility() {
+  pickables = []; blockers = []; liveMeshes = [];
+  for (const r of bones.values()) {
+    const inQuiz = inScope(r.data), live = inQuiz && inView(r.data);
+    const hidden = state.hidden.has(r.id);
+    const occluding = occ.recs.has(r);
+    r.mesh.visible = !hidden;
+    const opacity = !live ? (inQuiz ? 0.03 : 0.07) : occluding ? 0.16 : (state.xray ? 0.32 : 1);
+    const transparent = opacity < 1;
+    if (r.mat.transparent !== transparent) { r.mat.transparent = transparent; r.mat.needsUpdate = true; }
+    r.mat.opacity = opacity; r.mat.depthWrite = !transparent;
+    if (live && !hidden) { liveMeshes.push(r.mesh); if (!occluding) pickables.push(r.mesh); }
+  }
+  for (const c of ctxPieces) {
+    const live = inSection(c) && inView(c);
+    const op = !live ? 0.05 : occ.ctx.has(c.mesh) ? 0.1 : (state.xray ? Math.min(c.baseOpacity, 0.25) : c.baseOpacity);
+    const transparent = op < 1;
+    if (c.mesh.material.transparent !== transparent) { c.mesh.material.transparent = transparent; c.mesh.material.needsUpdate = true; }
+    c.mesh.material.opacity = op; c.mesh.material.depthWrite = !transparent;
+    if (live) { liveMeshes.push(c.mesh); if (!occ.ctx.has(c.mesh) && CONTEXT_CLICKABLE[c.kind]) blockers.push(c.mesh); }
+  }
+  $('unhideBtn').hidden = state.hidden.size === 0;   // only there when something is hidden
+  $('unhideBtn').textContent = `Afficher ${state.hidden.size} os masqué${state.hidden.size > 1 ? 's' : ''}`;
+}
+
+/* ---------------- picking ---------------- */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+function pickAt(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  if (state.xray) {
+    const hits = raycaster.intersectObjects(pickables, false);
+    if (!hits.length) return null;
+    // in x-ray the smallest bone under the cursor wins, so inner bones can be reached
+    let best = null;
+    for (const h of hits) { const rec = h.object.userData.rec; if (!best || rec.radius < best.radius) best = rec; }
+    return { rec: best };
+  }
+  const hits = raycaster.intersectObjects(pickables.concat(blockers), false);
+  if (!hits.length) return null;
+  const o = hits[0].object;
+  return o.userData.rec ? { rec: o.userData.rec } : { ctx: o.userData.ctx };
+}
+
+let hoverRec = null, hoverPending = null;
+canvas.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') hoverPending = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerleave', () => { hoverPending = null; setHover(null); });
+function setHover(rec) { hoverRec = rec; $('stage').classList.toggle('hovering', !!rec); }
+
+let down = null;
+canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; cancelFly(); });
+canvas.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  const quick = performance.now() - down.t < 650;
+  down = null;
+  if (moved > 7 || !quick) return;
+  const p = pickAt(e.clientX, e.clientY);
+  if (!p) return;
+  if (p.ctx) { toast(CONTEXT_NOTE[p.ctx.kind] || 'Ça ne fait pas partie des 206 os.'); return; }
+  const rec = p.rec;
+  if (e.shiftKey || state.peel) { hideBone(rec); return; }
+  if (state.mode === 'study') { studyPick(rec); return; }
+  if (review) { reviewPick(rec); return; }
+  answer(rec);
+});
+function studyPick(rec) {
+  if (!study) return;
+  const idx = study.items.findIndex(it => it.accept.has(rec.id));
+  if (idx < 0) return;
+  study.index = idx;
+  showStudyItem(false, rec.id);
+}
+function hideBone(rec) {
+  state.hidden.add(rec.id);
+  rec.overlay.visible = false;
+  applyVisibility();
+  toast(`Masqué : ${lowerFirst(label(rec.data))}. Utilisez « Afficher les os masqués » pour le faire réapparaître.`);
+}
+
+/* ---------------- search (study) ---------------- */
+// lower case without accents, so “femur” finds “Fémur”
+const fold = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+$('search').addEventListener('input', renderSearch);
+function renderSearch() {
+  const q = fold($('search').value.trim());
+  const list = $('searchList');
+  if (!q) { list.replaceChildren(); return; }
+  const terms = q.split(/\s+/);
+  const found = DATA.bones.filter(b => { const t = fold(b.name + ' ' + b.tech + ' ' + DATA.groups[b.group].name + ' ' + b.en + ' ' + b.id); return terms.every(w => t.includes(w)); }).slice(0, 12);
+  list.replaceChildren(...found.map(b => {
+    const li = document.createElement('li'); const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = label(b);
+    btn.addEventListener('click', () => {
+      if (!inScope(b)) { setSection(`${b.region}/${b.sub}`, false); startSession(); }
+      const rec = bones.get(b.id); if (!rec) return;
+      studyPick(rec);
+      showBones([rec], rec);
+      document.body.classList.remove('sheet-open');
+    });
+    li.append(btn); return li;
+  }));
+}
+
+/* ---------------- camera ---------------- */
+let fly = null;
+const layout = { left: 0, right: 0, top: 0, bottom: 0, w: 1, h: 1, freeW: 1, freeH: 1, fullH: 1 };
+function fitDistance(radius) {
+  const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const half = Math.atan(t * Math.min(layout.freeW, layout.freeH) / layout.fullH);
+  return radius / Math.sin(half) * 1.06;
+}
+// Camera moves orbit around the point being looked at: the direction swings round on a sphere while the
+// distance and the look-at point ease to their new values, so the camera never cuts through the skeleton.
+const sph0 = new THREE.Spherical(), sph1 = new THREE.Spherical(), sphNow = new THREE.Spherical();
+function flyTo(center, dist, dir) {
+  const off = camera.position.clone().sub(controls.target);
+  sph0.setFromVector3(off);
+  sph1.setFromVector3(dir ? dir.clone().normalize() : off.clone().normalize());
+  let dTheta = sph1.theta - sph0.theta;
+  while (dTheta > Math.PI + 1e-6) dTheta -= 2 * Math.PI;
+  while (dTheta < -Math.PI - 1e-6) dTheta += 2 * Math.PI;
+  const turn = Math.max(Math.abs(dTheta), Math.abs(sph1.phi - sph0.phi));
+  fly = {
+    t0: controls.target.clone(), t1: center.clone(), r0: off.length(), r1: dist,
+    th0: sph0.theta, dth: dTheta, ph0: sph0.phi, ph1: sph1.phi,
+    s: performance.now(), dur: 650 + 350 * Math.min(1, turn / Math.PI),
+  };
+}
+function cancelFly() { fly = null; }
+controls.addEventListener('start', cancelFly);
+const VIEW_DIRS = {
+  front: new THREE.Vector3(0, 0.1, 1), back: new THREE.Vector3(0, 0.1, -1),
+  left: new THREE.Vector3(1, 0.1, 0), right: new THREE.Vector3(-1, 0.1, 0),
+  top: new THREE.Vector3(0, 1, 0.55),
+};
+function sectionDir(sec = state.section) {
+  const p = parseSection(sec);
+  return p.region === 'foot' ? VIEW_DIRS.top : VIEW_DIRS.front;   // look down on the top of the foot
+}
+function scopeSphere(key = state.view, side = state.viewSide) {
+  const box = new THREE.Box3();
+  for (const r of bones.values()) if (inScope(r.data) && inView(r.data, key, side)) { box.expandByPoint(r.center.clone().addScalar(r.radius)); box.expandByPoint(r.center.clone().addScalar(-r.radius)); }
+  if (box.isEmpty()) box.copy(modelBox);
+  return box.getBoundingSphere(new THREE.Sphere());
+}
+function zoomDir(key = state.view, side = state.viewSide) {
+  const z = ZOOM[key];
+  if (z.key === 'all') return sectionDir();
+  if (z.lateral && side !== 'both') return new THREE.Vector3(side === 'left' ? 1 : -1, 0.12, 0.3);  // look at that side of the head
+  return z.top ? VIEW_DIRS.top : VIEW_DIRS.front;
+}
+function frameSection(dir) {
+  autoView = '';
+  const s = scopeSphere();
+  flyTo(s.center, fitDistance(Math.max(s.radius, zoomed() ? 0.02 : 0)), dir || zoomDir());
+}
+function setView(key, side, frame = true) {
+  state.view = key; state.viewSide = side;
+  occ.key = '';
+  applyVisibility(); renderZoom();
+  if (frame) frameSection();
+}
+// If the bone being shown (study step or practice reveal) is outside the zoomed area, zoom back out first.
+function ensureInView(ids) {
+  if (zoomed() && [...ids].some(id => BONE[id] && !inView(BONE[id]))) setView('all', 'both', false);
+}
+function zoomCount(key, side) { return DATA.bones.filter(b => inScope(b) && inView(b, key, side)).length; }
+const narrow = () => window.innerWidth <= 900;
+function setSheet(which) {   // phones: 'view', 'settings' or null (only one bottom sheet open at a time)
+  document.body.classList.toggle('view-open', which === 'view');
+  document.body.classList.toggle('sheet-open', which === 'settings');
+  $('viewBtn').setAttribute('aria-expanded', String(which === 'view'));
+}
+function closeViewSheetOnPhone() { if (narrow()) setSheet(null); }
+function renderZoom() {
+  const btn = $('viewBtn');   // phones only: shows where you're zoomed
+  btn.textContent = zoomed() ? viewLabel() : 'Vue';
+  btn.classList.toggle('zoomed', zoomed());
+  $('viewSideSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state.viewSide)));
+  $('zoomGrid').replaceChildren(...ZOOMS.map((z, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'zchip'; b.dataset.zoom = z.key;
+    b.setAttribute('aria-pressed', String(state.view === z.key || ZOOM[state.view].parent === z.key));
+    b.disabled = zoomCount(z.key, state.viewSide) === 0;
+    b.title = z.key === 'all' ? 'Touche 1. Échap dézoome aussi.' : `Touche ${(i + 1) % 10}. Appuyez de nouveau pour le côté gauche, puis le droit.`;
+    const l = document.createElement('span'); l.textContent = z.label;
+    const k = document.createElement('kbd'); k.textContent = String((i + 1) % 10);
+    b.append(l, k); return b;
+  }));
+}
+$('viewBtn').addEventListener('click', () => setSheet(document.body.classList.contains('view-open') ? null : 'view'));
+$('closeView').addEventListener('click', () => setSheet(null));
+$('zoomGrid').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-zoom]'); if (!b || b.disabled) return;
+  setView(b.dataset.zoom, zoomCount(b.dataset.zoom, state.viewSide) ? state.viewSide : 'both');
+  closeViewSheetOnPhone();
+});
+$('viewSideSeg').addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || !zoomCount(state.view, v)) return;
+  setView(state.view, v);
+});
+// number keys: 1 whole body … 0 feet; pressing the same key again steps through both → left → right
+function zoomKey(i) {
+  const z = ZOOMS[i]; if (!z) return;
+  let side = 'both';
+  if (state.view === z.key) side = { both: 'left', left: 'right', right: 'both' }[state.viewSide];
+  if (z.key === 'all' && state.view === 'all') side = 'both';
+  for (let tries = 0; tries < 3 && !zoomCount(z.key, side); tries++) side = { both: 'left', left: 'right', right: 'both' }[side];
+  if (!zoomCount(z.key, side)) { toast(`${z.label} : cette zone ne fait pas partie de ce quiz.`); return; }
+  setView(z.key, side);
+  if (state.clean || narrow()) toast(`Zoom : ${viewLabel()}`);   // otherwise the View card already shows it
+}
+
+/* ---------------- voice commands ---------------- */
+// Say an area, optionally with a side: "colonne", "pied gauche", "cage thoracique droite", "corps entier", "dézoomer".
+// Voice also reaches the parts of the spine, which have no chip: "colonne cervicale", "colonne thoracique", "colonne lombaire".
+// A command only fires when the whole phrase is a command, so narration like "la colonne a 26 os"
+// never moves the camera. Uses the browser's own speech recognition (Chrome, Edge, Safari; not Firefox).
+// Phrases are compared lower case, without accents or spaces ("Cage thoracique" = "cagethoracique").
+// "côté" (side) is turned into the token "coteside" first, so it isn't confused with "côte" (rib).
+const VOICE_AREAS = {
+  all: ['corps entier', 'tout le corps', 'corps', 'squelette entier', 'tout le squelette', 'squelette', 'tout', 'dezoome', 'dezoomer', 'vue d ensemble', 'vue generale', 'reinitialiser', 'reinitialiser la vue'],
+  head: ['tete', 'crane', 'visage', 'face'],
+  ears: ['oreille', 'osselets', 'osselet', 'oreille moyenne', 'oreille interne'],
+  spine: ['colonne', 'colonne vertebrale', 'rachis', 'vertebres', 'vertebre', 'epine dorsale', 'dos'],
+  cervical: ['colonne cervicale', 'cervicales', 'cervicale', 'vertebres cervicales', 'rachis cervical', 'cou', 'nuque'],
+  thoracic: ['colonne thoracique', 'thoracique', 'vertebres thoraciques', 'colonne dorsale', 'dorsales', 'vertebres dorsales', 'rachis dorsal', 'haut du dos', 'milieu du dos'],
+  lumbar: ['colonne lombaire', 'lombaires', 'lombaire', 'vertebres lombaires', 'rachis lombaire', 'bas du dos'],
+  ribcage: ['cage thoracique', 'cotes', 'cote', 'poitrine', 'thorax', 'sternum'],
+  pelvis: ['bassin', 'pelvis', 'hanche', 'os coxal', 'ceinture pelvienne'],
+  arms: ['bras', 'avant bras', 'coude', 'epaule'],
+  hands: ['main', 'poignet', 'doigt', 'paume'],
+  legs: ['jambe', 'cuisse', 'genou', 'tibia'],
+  feet: ['pied', 'orteil', 'cheville', 'talon'],
+};
+// Sound-alikes trusted only next to "gauche" / "droite": on their own they're ordinary words.
+const VOICE_SIDED_ONLY = { feet: ['pie', 'pieds'], hands: ['mains'], legs: ['jambes'] };
+const VOICE_SIDES = { gauche: 'left', droite: 'right', droit: 'right', deux: 'both' };
+const voiceForm = (s) => s.replace(/[^a-z]/g, '').replace(/[sx]$/, '');   // "Pieds" = "pied", "genoux" = "genou"
+const VOICE_LOOKUP = new Map(), VOICE_LOOKUP_SIDED = new Map();
+for (const [k, list] of Object.entries(VOICE_AREAS)) for (const a of list) VOICE_LOOKUP.set(voiceForm(a), k);
+for (const [k, list] of Object.entries(VOICE_SIDED_ONLY)) for (const a of list) VOICE_LOOKUP_SIDED.set(voiceForm(a), k);
+const VOICE_FILLER = new Set(['ok', 'okay', 'euh', 'heu', 'bon', 'alors', 'et', 'maintenant', 'bah', 'ben', 'allez']);
+const VOICE_POLITE = new Set(['merci', 'stp', 'svp', 'plait', 'te', 'vous', 'il']);
+const VOICE_PREFIX = new Set(['zoom', 'zoome', 'zoomer', 'zoomez', 'sur', 'vers', 'montre', 'montrez', 'moi', 'affiche', 'afficher', 'va', 'allez', 'aller', 'voir', 'vue', 'regarde', 'regarder', 'le', 'la', 'les', 'l', 'du', 'de', 'des']);
+const VOICE_LINK = ['de', 'du', 'des', 'la', 'le', 'les', 'l', 'a', 'au', 'sur', 'cote', 'coteside'];
+
+// -> { key, side } or null. side is 'both' unless gauche / droite was said.
+function parseVoice(raw) {
+  let w = String(raw).toLowerCase().replace(/côtés?/g, ' coteside ')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+  while (w.length && VOICE_FILLER.has(w[0])) w.shift();
+  while (w.length && (VOICE_POLITE.has(w[w.length - 1]) || (w[w.length - 1] === 's' && w.length > 1))) w.pop();   // "… s'il te plaît", "merci"
+  const direct = VOICE_LOOKUP.get(voiceForm(w.join('')));
+  if (direct) return { key: direct, side: 'both' };   // e.g. "vue d'ensemble", said before "vue" is treated as a prefix
+  while (w.length > 1 && VOICE_PREFIX.has(w[0])) w.shift();
+  let side = null, saidSide = false;
+  if (w[0] === 'coteside' && w.length > 1 && VOICE_SIDES[w[1]]) {   // "côté gauche (de la colonne)"
+    w.shift(); side = VOICE_SIDES[w.shift()]; saidSide = true;
+    while (w.length && VOICE_LINK.includes(w[0])) w.shift();
+  } else if (w[0] === 'deux' || (w[0] === 'les' && w[1] === 'deux')) {   // "les deux pieds"
+    w.splice(0, w[0] === 'les' ? 2 : 1); side = 'both';
+  } else {                                             // "pied gauche", "cage thoracique côté droit", "main à droite"
+    if (w.length > 1 && VOICE_SIDES[w[w.length - 1]]) {
+      side = VOICE_SIDES[w.pop()];
+      if (w.length && w[w.length - 1] === 'coteside') saidSide = true;
+      while (w.length > 1 && VOICE_LINK.includes(w[w.length - 1])) w.pop();
+      if (w.length === 1 && w[0] === 'coteside') w.pop();
+    } else if (w.includes('coteside')) return null;
+  }
+  if (!w.length) return side && side !== 'both' ? { key: state.view, side } : null;   // "côté gauche": same area, that side
+  const f = voiceForm(w.join(''));
+  const key = VOICE_LOOKUP.get(f) || (side && side !== 'both' ? VOICE_LOOKUP_SIDED.get(f) : null);
+  return key ? { key, side: side || 'both' } : null;
+}
+
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+// Safari runs one phrase per session (its continuous mode keeps adding to a single transcript), so it restarts after each.
+const VOICE_ONE_SHOT = /^((?!chrome|chromium|crios|android|edg|fxios).)*safari/i.test(navigator.userAgent);
+const voice = { on: false, rec: null, startedAt: 0, gotResult: false, quickEnds: 0, fired: new Map(), steady: 0, restart: 0 };
+function voiceStatus(text, kind) {
+  const el = $('voiceHeard');
+  el.textContent = text; el.className = 'voice-heard' + (kind ? ' ' + kind : ''); el.hidden = !text;
+}
+function setVoice(on, reason) {
+  if (on && !SpeechRec) {
+    toast('Les commandes vocales nécessitent Chrome, Edge ou Safari. Firefox ne prend pas en charge la reconnaissance vocale.', 'bad');
+    return;
+  }
+  voice.on = on;
+  $('voiceBtn').setAttribute('aria-pressed', String(on));
+  clearTimeout(voice.restart); clearTimeout(voice.steady);
+  if (on) {
+    voice.quickEnds = 0;
+    voiceStatus('J’écoute… dites « pied gauche », « colonne », « corps entier »');
+    voiceStart();
+  } else {
+    const rec = voice.rec; voice.rec = null;
+    if (rec) { try { rec.abort(); } catch (e) { /* already stopped */ } }
+    voiceStatus(reason || '', reason ? 'bad' : '');
+    if (reason && (state.clean || narrow())) toast(reason, 'bad');
+  }
+}
+function voiceStart() {
+  if (!voice.on || voice.rec || document.hidden) return;
+  const rec = new SpeechRec();
+  rec.lang = /^fr\b/i.test(navigator.language || '') ? navigator.language : 'fr-FR';
+  rec.continuous = !VOICE_ONE_SHOT;
+  rec.interimResults = true;
+  rec.maxAlternatives = 3;
+  voice.rec = rec; voice.fired = new Map(); voice.startedAt = performance.now(); voice.gotResult = false;
+  rec.onresult = (e) => { if (voice.rec === rec) onVoiceResult(e, rec); };
+  rec.onerror = (e) => {
+    if (voice.rec !== rec) return;
+    const stop = {
+      'not-allowed': 'Micro bloqué. Autorisez-le depuis l’icône dans la barre d’adresse. Si le micro n’est pas disponible sur ce lien, ouvrez la page depuis votre propre site ou ordinateur.',
+      'service-not-allowed': 'La reconnaissance vocale n’est pas autorisée sur cette page. Ouvrez-la depuis votre propre site ou ordinateur.',
+      'audio-capture': 'Aucun micro trouvé. Branchez-en un, puis réactivez la voix.',
+      'language-not-supported': 'La reconnaissance vocale ne prend pas en charge le français dans ce navigateur.',
+    }[e.error];
+    if (stop) { setVoice(false, stop); return; }
+    if (e.error === 'network') voiceStatus('Service de reconnaissance vocale injoignable. Nouvelle tentative…', 'bad');
+    // 'no-speech' and 'aborted' are routine: the end handler restarts listening
+  };
+  rec.onend = () => {
+    if (voice.rec !== rec) return;
+    voice.rec = null;
+    if (!voice.on) return;
+    // keep listening; back off if the recognizer keeps stopping straight away (offline, service trouble)
+    const quick = !voice.gotResult && performance.now() - voice.startedAt < 1500;
+    voice.quickEnds = quick ? voice.quickEnds + 1 : 0;
+    voice.restart = setTimeout(voiceStart, quick ? Math.min(8000, 250 * 2 ** voice.quickEnds) : 60);
+  };
+  try { rec.start(); } catch (err) { voice.rec = null; voice.restart = setTimeout(voiceStart, 500); }
+}
+function onVoiceResult(e, rec) {
+  voice.gotResult = true;
+  for (let i = e.resultIndex; i < e.results.length; i++) {
+    const r = e.results[i];
+    const alts = []; for (let j = 0; j < r.length; j++) alts.push(String(r[j].transcript || '').trim());
+    const text = alts[0] || '';
+    if (!text) continue;
+    let cmd = null; for (const a of alts) if ((cmd = parseVoice(a))) break;
+    const prev = voice.fired.get(i);
+    clearTimeout(voice.steady);
+    if (r.isFinal) {
+      if (cmd && !(prev && prev.key === cmd.key && prev.side === cmd.side)) voiceDo(cmd, text);
+      else if (!cmd && !prev) voiceStatus(`« ${text} » n’est pas une commande`);
+      voice.fired.set(i, cmd || prev || { key: null });
+    } else if (!prev) {
+      voiceStatus(`« ${text} »…`);
+      // act before the browser finalises the phrase if the words so far are a command and stay that way briefly
+      if (cmd) voice.steady = setTimeout(() => { if (voice.rec === rec && !voice.fired.has(i)) { voice.fired.set(i, cmd); voiceDo(cmd, text); } }, 350);
+    }
+  }
+}
+function voiceDo(cmd, text) {
+  if (pendingConfirm) return;   // the end-test question is up: ignore speech
+  let side = cmd.side;
+  if (!zoomCount(cmd.key, side)) side = 'both';
+  if (!zoomCount(cmd.key, side)) { voiceStatus(`« ${text} » : ${ZOOM[cmd.key].label} ne fait pas partie de ce quiz`, 'bad'); return; }
+  if (state.view === cmd.key && state.viewSide === side) frameSection(); else setView(cmd.key, side);
+  voiceStatus(`« ${text} » → ${viewLabel()}`, 'ok');
+  if (state.clean || narrow()) toast(`Zoom : ${viewLabel()}`);
+}
+$('voiceBtn').addEventListener('click', () => setVoice(!voice.on));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && voice.on && !voice.rec) voiceStart(); });
+/* Move the camera only when the item would be hard to see: too small, off-screen, or too big. */
+const tmpV = new THREE.Vector3();
+function projectPx(p) {
+  tmpV.copy(p).project(camera);
+  return { x: (tmpV.x + 1) / 2 * layout.w, y: (1 - tmpV.y) / 2 * layout.h, behind: tmpV.z > 1 };
+}
+function pxPerMeterAt(p) {
+  const d = camera.position.distanceTo(p);
+  return layout.fullH / (2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+}
+function inFree(pt, margin = 30) {
+  return !pt.behind && pt.x > layout.left + margin && pt.x < layout.w - layout.right - margin && pt.y > layout.top + margin && pt.y < layout.h - layout.bottom - margin;
+}
+/* Standard views. Every bone has one: the zoom area it belongs to, at the same angle and distance as that area's
+   1–0 key. Ear bones, hands and feet are framed one side at a time (their bones are too small to see with both
+   sides in frame); everything else is framed whole. Stepping to a bone moves the camera only when the area changes
+   or the bone is off screen, so a view you rotated by hand is kept while you stay in that area. */
+const ONE_SIDE_AREAS = new Set(['ears', 'hands', 'feet']);
+// Bones better seen from another direction than their area's usual one (a 'Look from' direction).
+const VIEW_TURN = { occipital: 'back' };
+let autoView = '';   // the standard view the camera last moved to; cleared by any other framing
+function areaFor(d) {
+  return ZOOMS.find(z => z.sec.includes('/') && inSection(d, z.sec))      // spine, rib cage, pelvis, ears
+    || ZOOMS.find(z => z.key !== 'all' && inSection(d, z.sec))           // head, arms, hands, legs, feet
+    || ZOOM.all;
+}
+const sideOf = (r) => r.data.side === 'L' ? 'left' : r.data.side === 'R' ? 'right' : null;
+function standardView(members, focus) {
+  const z = areaFor((focus || members[0]).data);
+  let side = 'both';
+  if (ONE_SIDE_AREAS.has(z.key)) {
+    // the bone's own side; for a left + right pair, whichever is nearer to where the camera is looking
+    const sided = members.filter(sideOf);
+    const pick = focus && sideOf(focus) ? focus
+      : sided.length ? sided.reduce((b, r) => r.center.distanceTo(controls.target) < b.center.distanceTo(controls.target) ? r : b) : null;
+    if (pick) side = sideOf(pick);
+  }
+  if (!zoomCount(z.key, side)) side = 'both';
+  const turn = members.map(r => VIEW_TURN[r.id]).find(Boolean) || null;
+  return { key: z.key, side, turn };
+}
+function onScreen(members, focus) {
+  const t = focus || members.reduce((b, r) => r.radius > b.radius ? r : b, members[0]);
+  const p = projectPx(t.center);
+  return !p.behind && inFree(p, 20) && t.radius * pxPerMeterAt(t.center) >= 8;
+}
+// Bring the bone(s) being shown into view: a study step, a practice reveal, a search result.
+function showBones(members, focus) {
+  if (!members.length) return;
+  if (zoomed()) { if (!onScreen(members, focus)) frameSection(); return; }   // keep the zoom area the person picked
+  const v = standardView(members, focus), id = [v.key, v.side, v.turn].join('|');
+  if (id === autoView && onScreen(members, focus)) return;
+  const sph = scopeSphere(v.key, v.side);
+  flyTo(sph.center, fitDistance(Math.max(sph.radius, 0.02)), v.turn ? VIEW_DIRS[v.turn] : zoomDir(v.key, v.side));
+  autoView = id;
+}
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  const t = controls.target.clone();
+  flyTo(t, camera.position.distanceTo(t), VIEW_DIRS[b.dataset.view]);
+  closeViewSheetOnPhone();
+}));
+
+/* ---------------- UI rendering ---------------- */
+function fmtTime(ms) { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+// Long names shrink to fit on one line (down to 55%) so the prompt is the same height for every question.
+function fitName() {
+  const el = $('pName');
+  el.style.fontSize = ''; el.style.whiteSpace = 'nowrap';
+  const base = parseFloat(getComputedStyle(el).fontSize) || 28;
+  el.style.lineHeight = (base * 1.1).toFixed(1) + 'px';
+  const avail = el.clientWidth;
+  if (!avail) return;
+  let size = base;
+  for (let i = 0; i < 5 && el.scrollWidth > avail + 1 && size > base * 0.55; i++) {
+    size = Math.max(base * 0.55, size * (avail / el.scrollWidth) * 0.98);
+    el.style.fontSize = size.toFixed(1) + 'px';
+  }
+  if (el.scrollWidth > avail + 1) el.style.whiteSpace = 'normal';
+}
+function setTip(text) { const t = $('pTip'); t.hidden = !text; t.textContent = text || ''; }
+function renderPrompt() { renderPromptText(); fitName(); }
+function renderPromptText() {
+  const pr = $('prompt');
+  pr.classList.toggle('is-reveal', !!session && session.phase === 'reveal');
+  const secLabel = sectionLabel();
+  if (state.mode === 'study') {
+    if (!study || !study.items.length) {
+      $('pEyebrow').textContent = 'Révision'; $('pName').textContent = 'Rien à réviser ici'; $('pMeta').textContent = secLabel; setTip(''); return;
+    }
+    const it = study.items[study.index];
+    $('pEyebrow').textContent = `Révision · ${secLabel}`;
+    $('pName').textContent = it.name;
+    $('pMeta').textContent = `${study.index + 1} sur ${study.items.length} · ← → pour avancer, ou cliquez sur un os`;
+    setTip(sectionTip());
+    $('pBar').style.width = (100 * (study.index + 1) / study.items.length).toFixed(1) + '%';
+    return;
+  }
+  setTip('');
+  if (!session) return;
+  if (!session.total) {
+    $('pEyebrow').textContent = state.mode === 'test' ? 'Test' : 'Entraînement'; $('pName').textContent = 'Aucun os dans cette sélection'; $('pMeta').textContent = secLabel; return;
+  }
+  $('review').hidden = !review; $('pBarWrap').hidden = !!review; $('skipBtn').hidden = !!review;
+  if (review) {
+    $('pEyebrow').textContent = `${state.mode === 'test' ? 'Test terminé' : 'Série apprise'} · ${secLabel}`;
+    $('pName').textContent = `${review.ok} / ${session.total}`;
+    $('pMeta').textContent = `${review.acc} % de précision · ${fmtTime(review.ms)} · record ${review.best.score}/${review.best.total}`;
+    return;
+  } else if (!session.current) {
+    $('pEyebrow').textContent = state.mode === 'test' ? 'Test terminé' : 'Série apprise';
+    $('pName').textContent = `${session.total - session.everMissed.size} sur ${session.total}`;
+  } else if (session.phase === 'reveal') {
+    $('pEyebrow').textContent = 'Le voici. Cliquez sur l’os qui brille';
+    $('pName').textContent = session.current.name;
+  } else {
+    $('pEyebrow').textContent = 'Trouvez :';
+    $('pName').textContent = session.current.name;
+  }
+  const answered = session.total - session.queue.length - (session.current ? 1 : 0);
+  $('pMeta').textContent = `${secLabel} · ${state.mode === 'test' ? `${answered}/${session.total} répondus` : `${session.done}/${session.total} appris`}`;
+  const frac = state.mode === 'test' ? answered / session.total : session.done / session.total;
+  $('pBar').style.width = (100 * frac).toFixed(1) + '%';
+}
+let promptTimer = 0;
+function pulsePrompt(kind) {
+  const pr = $('prompt'); pr.classList.remove('is-ok', 'is-bad'); pr.classList.add(kind === 'ok' ? 'is-ok' : 'is-bad');
+  clearTimeout(promptTimer); promptTimer = setTimeout(() => pr.classList.remove('is-ok', 'is-bad'), 600);
+}
+function renderStats() {
+  const s = session;
+  $('sAcc').textContent = s && s.attempts ? Math.round(100 * s.correct / s.attempts) + ' %' : '–';
+  $('sStreak').textContent = s ? s.streak : 0;
+  if (!s) $('sTime').textContent = '0:00';
+}
+function renderRail() {
+  const rail = $('rail');
+  const cur = parseSection(state.section);
+  const mk = (sec, label, cls) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.dataset.sec = sec;
+    b.setAttribute('aria-pressed', String(state.section === sec));
+    const l = document.createElement('span'); l.textContent = label;
+    const n = document.createElement('em'); n.textContent = countFor(sec);
+    b.append(l, n); return b;
+  };
+  const title = document.createElement('div'); title.className = 'rail-title'; title.textContent = 'Réviser une région à la fois';
+  const kids = [title, mk('all', 'Corps entier', 'rg')];
+  for (const r of DATA.regions) {
+    const g = document.createElement('div'); g.className = 'rgroup' + (cur.region === r.key ? ' open' : '');
+    const subs = document.createElement('div'); subs.className = 'subs';
+    subs.append(...r.subs.map(s => mk(`${r.key}/${s.key}`, s.label, 'sb')));
+    g.append(mk(r.key, r.label, 'rg'), subs);
+    kids.push(g);
+  }
+  rail.replaceChildren(...kids);
+  scrollRailToSelection();
+}
+// on phones the map is a scrolling row: keep the selected chip in view
+function scrollRailToSelection() {
+  const rail = $('rail'), sel = rail.querySelector('[aria-pressed="true"]');
+  if (sel && rail.scrollWidth > rail.clientWidth) {
+    rail.scrollLeft = Math.max(0, sel.getBoundingClientRect().left - rail.getBoundingClientRect().left + rail.scrollLeft - 24);
+  }
+}
+$('rail').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-sec]'); if (!b) return;
+  const sec = b.dataset.sec;
+  guardTest(sec === state.section ? 'Recommencer' : `Passer à « ${sectionLabel(sec)} »`, () => { setSection(sec); startSession(); });
+});
+
+/* ---------------- confirm before throwing away a test in progress ---------------- */
+// Practice isn't guarded: every practice answer is already saved to the per-bone history as you go.
+function testInProgress() { return state.mode === 'test' && !!session && !session.end && !!session.current && session.attempts > 0; }
+let pendingConfirm = null;
+// Runs `action` right away, unless a test is under way: then it asks first. The clock stops while the question is up.
+function guardTest(what, action) {
+  if (!testInProgress()) { action(); return; }
+  const answered = session.total - session.queue.length - 1;
+  $('confirmMsg').textContent = `Vous avez répondu à ${answered} sur ${session.total} (${sectionLabel()}). ${what} met fin à ce test, qui ne comptera pas pour votre record.`;
+  pendingConfirm = { action, t0: performance.now() };
+  $('confirm').hidden = false;
+  $('confirmNo').focus();
+}
+function closeConfirm(go) {
+  const p = pendingConfirm; if (!p) return;
+  pendingConfirm = null;
+  $('confirm').hidden = true;
+  if (go) { setSheet(null); p.action(); }
+  else if (session && !session.end) session.start += performance.now() - p.t0;   // time spent deciding doesn't count
+}
+$('confirmYes').addEventListener('click', () => closeConfirm(true));
+$('confirmNo').addEventListener('click', () => closeConfirm(false));
+$('confirm').addEventListener('click', (e) => { if (e.target === $('confirm')) closeConfirm(false); });
+$('homeLink').addEventListener('click', (e) => {
+  if (!testInProgress()) return;
+  e.preventDefault();
+  const href = e.currentTarget.href;
+  guardTest('Quitter cette page', () => { location.href = href; });
+});
+function renderSegs() {
+  for (const [id, val] of [['modeSeg', state.mode], ['setSeg', state.set], ['hintSeg', state.hints ? 'on' : 'off']]) {
+    $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === val)));
+  }
+  const hints = {
+    study: 'Parcourez chaque os avec les flèches ou cliquez sur un os pour voir son nom. Pas de score.',
+    practice: 'Trouvez chaque os. Les erreurs reviennent quelques questions plus tard, jusqu’à ce que vous les réussissiez.',
+    test: 'Chaque os une fois, chronométré, sans aide. Votre record est enregistré dans ce navigateur.',
+  };
+  $('modeHint').textContent = hints[state.mode];
+  $('hintHint').textContent = state.hints
+    ? 'Les noms incluent des repères courants, comme « Patella (rotule) » et « 5e métacarpien (auriculaire) ».'
+    : 'Noms techniques uniquement, comme « Patella » et « Phalange distale du 5e orteil ». Les doigts et orteils sont numérotés à partir du pouce et du gros orteil (1er).';
+  $('searchBox').hidden = state.mode !== 'study';
+  $('keysHint').innerHTML = state.mode === 'study'
+    ? '<kbd>←</kbd> <kbd>→</kbd> précédent / suivant · <kbd>1</kbd>–<kbd>0</kbd> zoom (encore pour la gauche, puis la droite) · <kbd>Échap</kbd> dézoomer · <kbd>V</kbd> commandes vocales · <kbd>H</kbd> indices · <kbd>X</kbd> rayons X · <kbd>C</kbd> vue épurée · <kbd>R</kbd> recadrer'
+    : '<kbd>S</kbd> montrer / passer · <kbd>1</kbd>–<kbd>0</kbd> zoom (encore pour la gauche, puis la droite) · <kbd>Échap</kbd> dézoomer · <kbd>V</kbd> commandes vocales · <kbd>H</kbd> indices · <kbd>X</kbd> rayons X · <kbd>C</kbd> vue épurée · <kbd>R</kbd> recadrer';
+  const studying = state.mode === 'study';
+  $('prevBtn').hidden = !studying; $('nextBtn').hidden = !studying;
+  $('skipBtn').hidden = studying;
+  $('skipBtn').textContent = state.mode === 'test' ? 'Passer' : 'Montrer';
+  $('stats').hidden = studying;
+}
+function renderBest() {
+  const b = store.get('best', {})[bestKey()];
+  const el = $('best');
+  if (state.mode === 'study') { el.textContent = ''; return; }
+  if (!b) { el.textContent = 'Pas encore de résultat enregistré pour cette sélection.'; return; }
+  el.innerHTML = `Record ici : <b>${b.score}/${b.total}</b> en <b>${fmtTime(b.ms)}</b>`;
+}
+function setMode(m, restart = true) {
+  state.mode = m; store.set('mode', m);
+  renderSegs(); renderBest(); resize();
+  if (restart) startSession();
+}
+function setSection(sec, frame = true) {
+  state.section = sec; store.set('section', sec);
+  state.view = 'all'; state.viewSide = 'both'; renderZoom();
+  applyVisibility(); renderRail(); renderBest();
+  if (frame) frameSection();
+}
+function setHints(on) {
+  if (state.hints === on) return;
+  state.hints = on; store.set('hints', on);
+  for (const it of [...(study ? study.items : []), ...(session ? session.items : [])]) it.name = itemLabel(it.key);
+  if (review) setCallout(null);
+  else if (callout.item) $('callout').textContent = callout.item.name;
+  renderSegs(); renderPrompt(); renderBest(); renderSearch();
+  toast(on ? 'Indices activés' : 'Indices désactivés : noms techniques uniquement');
+}
+$('hintSeg').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (v) setHints(v === 'on'); });
+$('modeSeg').addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || v === state.mode) return;
+  guardTest(`Passer en mode ${{ study: 'Révision', practice: 'Entraînement', test: 'Test' }[v]}`, () => setMode(v));
+});
+$('setSeg').addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || v === state.set) return;
+  guardTest(`Passer ${v === 'all' ? 'aux 206 os' : 'aux 60 noms'}`, () => {
+    state.set = v; store.set('set', v); renderSegs(); renderRail(); renderBest(); startSession();
+  });
+});
+function setXray(on) {
+  state.xray = on;
+  $('xrayBtn').setAttribute('aria-pressed', String(on));
+  applyVisibility();
+}
+$('xrayBtn').addEventListener('click', () => setXray(!state.xray));
+$('peelBtn').addEventListener('click', () => { state.peel = !state.peel; $('peelBtn').setAttribute('aria-pressed', String(state.peel)); toast(state.peel ? 'Mode effeuillage activé : cliquer sur un os le masque.' : 'Mode effeuillage désactivé.'); });
+$('unhideBtn').addEventListener('click', () => { state.hidden.clear(); applyVisibility(); closeViewSheetOnPhone(); });
+$('resetBtn').addEventListener('click', () => { frameSection(); closeViewSheetOnPhone(); });
+$('restartBtn').addEventListener('click', () => guardTest('Recommencer', () => startSession()));
+$('skipBtn').addEventListener('click', skip);
+$('prevBtn').addEventListener('click', () => studyStep(-1));
+$('nextBtn').addEventListener('click', () => studyStep(1));
+$('settingsBtn').addEventListener('click', () => setSheet('settings'));
+$('closeSheet').addEventListener('click', () => setSheet(null));
+function setClean(on) { state.clean = on; document.body.classList.toggle('clean', on); resize(); }
+$('cleanBtn').addEventListener('click', () => { setClean(true); setSheet(null); });
+$('cleanExit').addEventListener('click', () => setClean(false));
+
+window.addEventListener('keydown', (e) => {
+  if (pendingConfirm) {   // while the end-test question is up, only Esc / Tab / Enter on its buttons do anything
+    if (e.key === 'Escape') { e.preventDefault(); closeConfirm(false); }
+    else if (e.key === 'Tab') { e.preventDefault(); (document.activeElement === $('confirmNo') ? $('confirmYes') : $('confirmNo')).focus(); }
+    return;
+  }
+  if (e.target.closest && e.target.closest('input, textarea')) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'arrowright' || (k === ' ' && state.mode === 'study')) { if (state.mode === 'study') { e.preventDefault(); studyStep(1); } }
+  else if (k === 'arrowleft') { if (state.mode === 'study') { e.preventDefault(); studyStep(-1); } }
+  else if (k === 's') skip();
+  else if (k === 'x') setXray(!state.xray);
+  else if (k === 'h') setHints(!state.hints);
+  else if (k === 'v') setVoice(!voice.on);
+  else if (/^[0-9]$/.test(k)) zoomKey((Number(k) + 9) % 10);
+  else if (k === 'c') setClean(!state.clean);
+  else if (k === 'r') frameSection();
+  else if (k === 'escape') {
+    const sheetOpen = /(^|\s)(sheet|view)-open(\s|$)/.test(document.body.className);
+    if (sheetOpen) setSheet(null);
+    else if (zoomed()) setView('all', 'both');
+    else if (state.clean) setClean(false);
+  }
+  else if (k === 'enter' && session && session.phase === 'reveal') { clearQuizVisuals(); nextItem(); }
+});
+
+let toastTimer = 0;
+function toast(msg, kind) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = 'toast'; }, 2600);
+}
+
+/* ---------------- layout ---------------- */
+// The 3D view is full-bleed, but the prompt, region map, dock and (desktop) panel cover parts of it.
+// The projection is shifted so the skeleton is centred in the uncovered area and fitted to it.
+function measureInsets() {
+  const w = window.innerWidth, h = window.innerHeight, wide = w > 900;
+  const vis = (el) => el && !el.hidden && el.offsetParent !== null;
+  let top = 0, bottom = 0, left = 0, right = 0;
+  const tops = ['prompt', 'stats'].concat(wide ? [] : ['rail']);
+  for (const id of tops) { const el = $(id); if (vis(el)) top = Math.max(top, el.getBoundingClientRect().bottom + 6); }
+  const dockBtns = [...document.querySelectorAll('.dock .btn')].filter(vis);
+  if (dockBtns.length) bottom = h - Math.min(...dockBtns.map(b => b.getBoundingClientRect().top)) + 6;
+  if (wide && !state.clean) {
+    if (vis($('panel'))) right = w - $('panel').getBoundingClientRect().left + 8;
+    for (const id of ['rail', 'viewCard']) if (vis($(id))) left = Math.max(left, $(id).getBoundingClientRect().right + 8);
+  }
+  return { w, h, top: Math.min(top, h * 0.45), bottom: Math.min(bottom, h * 0.3), left: Math.min(left, w * 0.3), right: Math.min(right, w * 0.35) };
+}
+function resize() {
+  const ins = measureInsets();
+  const { w, h } = ins;
+  renderer.setSize(w, h, false);
+  const offX = ins.right - ins.left, offY = ins.top - ins.bottom;
+  const fullW = w + Math.abs(offX), fullH = h + Math.abs(offY);
+  camera.aspect = fullW / fullH;
+  camera.setViewOffset(fullW, fullH, offX > 0 ? offX : 0, offY > 0 ? 0 : -offY, w, h);
+  camera.updateProjectionMatrix();
+  fitName();
+  Object.assign(layout, ins, { freeW: Math.max(1, w - ins.left - ins.right), freeH: Math.max(1, h - ins.top - ins.bottom), fullH });
+}
+window.addEventListener('resize', resize);
+window.addEventListener('resize', () => renderZoom());
+if (window.ResizeObserver) {
+  let raf = 0;
+  const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { resize(); scrollRailToSelection(); }); });
+  ['prompt', 'rail', 'viewCard', 'panel'].forEach(id => ro.observe($(id)));
+  ro.observe(document.querySelector('.dock'));
+}
+
+/* ---------------- render loop ---------------- */
+const tmpC = new THREE.Color();
+function updateCallout() {
+  const box = $('callout'), line = $('leaderLine'), dot = $('leaderDot');
+  const it = callout.item;
+  const show = it && (state.mode === 'study' || !!review || (session && session.phase === 'reveal'));
+  let rec = null;
+  if (show) {
+    if (callout.anchorId && it.accept.has(callout.anchorId)) rec = bones.get(callout.anchorId);
+    else {   // point at whichever member is nearest the middle of the free area
+      const cx = layout.left + layout.freeW / 2, cy = layout.top + layout.freeH / 2;
+      let bestD = Infinity;
+      for (const id of it.accept) { const r = bones.get(id); if (!r) continue; const p = projectPx(r.anchor); if (p.behind) continue; const d = Math.hypot(p.x - cx, p.y - cy); if (d < bestD) { bestD = d; rec = r; } }
+    }
+  }
+  callout.rec = rec;
+  const p = rec ? projectPx(rec.anchor) : null;
+  if (!p || p.behind) { box.hidden = true; line.setAttribute('x1', 0); line.setAttribute('x2', 0); line.setAttribute('y1', 0); line.setAttribute('y2', 0); dot.setAttribute('r', 0); return; }
+  box.hidden = false;
+  const bw = box.offsetWidth, bh = box.offsetHeight;
+  const cx = layout.left + layout.freeW / 2;
+  const dir = p.x < cx ? -1 : 1;
+  let lx = dir < 0 ? p.x - 56 - bw : p.x + 56;
+  let ly = p.y - 46 - bh / 2;
+  lx = Math.max(layout.left + 6, Math.min(lx, layout.w - layout.right - bw - 6));
+  ly = Math.max(layout.top + 6, Math.min(ly, layout.h - layout.bottom - bh - 6));
+  box.style.transform = `translate(${lx.toFixed(1)}px, ${ly.toFixed(1)}px)`;
+  const ex = dir < 0 ? lx + bw : lx, ey = ly + bh / 2;
+  line.setAttribute('x1', p.x.toFixed(1)); line.setAttribute('y1', p.y.toFixed(1));
+  line.setAttribute('x2', ex.toFixed(1)); line.setAttribute('y2', ey.toFixed(1));
+  dot.setAttribute('cx', p.x.toFixed(1)); dot.setAttribute('cy', p.y.toFixed(1)); dot.setAttribute('r', 3.5);
+}
+function sameSet(a, b) { if (a.size !== b.size) return false; for (const x of a) if (!b.has(x)) return false; return true; }
+function updateOccluders() {
+  const rec = callout.rec;
+  const key = rec && !state.xray ? rec.id + '|' + camera.position.toArray().map(v => v.toFixed(3)).join(',') : '';
+  if (key === occ.key) return;
+  occ.key = key;
+  const recs = new Set(), ctx = new Set();
+  if (key) {
+    const dir = new THREE.Vector3();
+    for (const pt of [rec.anchor, rec.center]) {
+      dir.copy(pt).sub(camera.position); const dist = dir.length(); dir.normalize();
+      raycaster.set(camera.position, dir); raycaster.near = 0; raycaster.far = Math.max(0, dist - 0.002);
+      for (const h of raycaster.intersectObjects(liveMeshes, false)) {
+        const r = h.object.userData.rec;
+        // only fade bones much bigger than the one being shown (the skull around the ear bones, the face around the vomer);
+        // a similar-sized neighbour, like the parietal in front of the frontal, stays solid and the glow shows through it
+        if (r) { if (!callout.item.accept.has(r.id) && r.radius > rec.radius * 1.6) recs.add(r); } else ctx.add(h.object);
+      }
+    }
+    raycaster.far = Infinity;
+  }
+  if (!sameSet(recs, occ.recs) || !sameSet(ctx, occ.ctx)) { occ.recs = recs; occ.ctx = ctx; applyVisibility(); }
+}
+function tick(now) {
+  if (fly) {
+    const k = Math.min(1, (now - fly.s) / fly.dur), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    controls.target.lerpVectors(fly.t0, fly.t1, e);
+    sphNow.set(fly.r0 + (fly.r1 - fly.r0) * e, fly.ph0 + (fly.ph1 - fly.ph0) * e, fly.th0 + fly.dth * e).makeSafe();
+    camera.position.setFromSpherical(sphNow).add(controls.target);
+    if (k >= 1) fly = null;
+  }
+  controls.update();
+  if (hoverPending) { const p = pickAt(hoverPending.x, hoverPending.y); hoverPending = null; setHover(p && p.rec ? p.rec : null); }
+  overlayMat.opacity = 0.28 + 0.3 * (0.5 + 0.5 * Math.sin(now / 220));
+  for (const r of bones.values()) {
+    if (r.tint) tmpC.copy(r.tint).multiplyScalar(0.1); else tmpC.setRGB(0, 0, 0);
+    if (r === hoverRec) tmpC.copy(COL.scan).multiplyScalar(0.16);
+    if (r.flash) {
+      const k = (now - r.flash.t0) / r.flash.dur;
+      if (k >= 1) r.flash = null; else tmpC.lerp(r.flash.color, 0.85 * (1 - k));
+    }
+    r.mat.emissive.copy(tmpC);
+  }
+  if (session && !session.end && state.mode !== 'study' && !pendingConfirm) $('sTime').textContent = fmtTime(now - session.start);
+  camera.updateMatrixWorld();
+  updateCallout();
+  updateOccluders();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+/* ---------------- boot ---------------- */
+renderSegs(); renderRail(); renderBest(); renderZoom(); resize();
+const loader = new GLTFLoader();
+async function fetchModel(url, onProgress) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const total = MODEL_BYTES || +res.headers.get('content-length') || 0;
+  const chunks = []; let got = 0;
+  if (res.body && res.body.getReader) {
+    const reader = res.body.getReader();
+    for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); got += value.length; if (total) onProgress(Math.min(1, got / total)); }
+  } else { chunks.push(new Uint8Array(await res.arrayBuffer())); }
+  const bytes = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let o = 0; for (const c of chunks) { bytes.set(c, o); o += c.length; }
+  if (!/\.txt$/.test(url)) return bytes.buffer;
+  const bin = atob(new TextDecoder().decode(bytes).trim());
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+function onModel(gltf) {
+  const root = gltf.scene;
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const id = o.name;
+    if (BONE[id]) bones.set(id, boneRecord(o, BONE[id]));
+    else if (DATA.context[id]) {
+      const [kind, region, sub, side] = DATA.context[id];
+      o.material = ctxMats[kind].clone(); o.userData.ctx = { kind };
+      ctxPieces.push({ id, mesh: o, kind, region, sub, side, baseOpacity: ctxMats[kind].opacity });
+    } else o.visible = false;
+  });
+  const missing = DATA.bones.filter(b => !bones.has(b.id)).map(b => b.id);
+  if (missing.length) console.warn('Bones missing from model:', missing);
+  modelBox = new THREE.Box3().setFromObject(root);
+  window.__the206 = { bones: bones.size, missing, context: ctxPieces.length };
+  if (location.hash === '#selftest') {
+    window.__the206.t = { THREE, bones, state, camera, controls, pickAt, applyVisibility, setSection, setXray, setMode, startSession,
+      frameSection, getSession: () => session, getStudy: () => study, setHints, setView, zoomKey, studyStep, renderPrompt, cancelFly, buildItems, countFor, layout,
+      ctxPieces, CONTEXT_CLICKABLE, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
+      flyNow: () => { if (!fly) return; controls.target.copy(fly.t1); sphNow.set(fly.r1, fly.ph1, fly.th0 + fly.dth).makeSafe(); camera.position.setFromSpherical(sphNow).add(controls.target); fly = null; controls.update(); camera.updateMatrixWorld(); } };
+  }
+  applyVisibility();
+  resize();
+  const s = modelBox.getBoundingSphere(new THREE.Sphere());
+  controls.target.copy(s.center);
+  camera.position.copy(s.center).add(VIEW_DIRS.front.clone().normalize().multiplyScalar(fitDistance(s.radius)));
+  frameSection();
+  $('loading').hidden = true;
+  startSession();
+}
+function onModelError(err) {
+  console.error(err);
+  $('loadMsg').textContent = 'Le modèle du squelette ne s’est pas chargé. Vérifiez votre connexion et rechargez la page.';
+}
+fetchModel(MODEL_URL, (f) => { $('loadBar').value = f; })
+  .catch(() => fetchModel(MODEL_URL_FALLBACK, (f) => { $('loadBar').value = f; }))
+  .then((buf) => loader.parse(buf, '', onModel, onModelError))
+  .catch(onModelError);
+requestAnimationFrame(tick);
+</script>
+</body></html>
