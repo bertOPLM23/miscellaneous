@@ -682,10 +682,10 @@ const NERVES_BYTES = 1639888;   // size of nerves.glb, for the progress bar
 const MUSCLES_BYTES = 1991916;   // size of muscles.glb, for the progress bar
 // colours of the non-bone structures, by kind
 const KIND_COLOR = {
-  muscle: 0xb5524b, tendon: 0xe2dccb, fascia: 0xc9c0ae, bourse: 0x8fbcd4, gaine: 0xa9c7a0,   // muscles
+  muscle: 0xa23d36, tendon: 0xe6dfcf, fascia: 0xcfc6b4, bourse: 0x9fc2d4, gaine: 0xb3cba8,   // muscles
   grey: 0xc9a397, sulcus: 0x8f6a60, nucleus: 0xa9615c, white: 0xebe3d3, ventricle: 0x6fa8d0,  // nervous system
-  meninge: 0xa99ac0, nerve: 0xe3bf4a, ganglion: 0xc99a35, sense: 0xdccbb5,
-  artery: 0xc8353a, vein: 0x3c66c2, pulmart: 0x5a72d0, pulmvein: 0xd04848, heart: 0xa84442, valve: 0xe9dcc4,   // blood vessels
+  meninge: 0xb7a9c4, nerve: 0xead9a2, ganglion: 0xd8bd7c, sense: 0xdccbb5,
+  artery: 0xb4262d, vein: 0x34529f, pulmart: 0x4f62b3, pulmvein: 0xbd3a3c, heart: 0x983a36, valve: 0xeadfca,   // blood vessels
   node: 0x6dbb63, organ: 0xb06a7d, duct: 0xd8c64a, collector: 0xe3dc86,                                          // lymphatics
 };
 const WORDS = {
@@ -696,7 +696,7 @@ const SYSTEMS = [
   {
     key: 'bones', label: 'Os', words: WORDS.bone, data: BONES_DATA,
     url: MODEL_URL, fallback: MODEL_URL_FALLBACK, bytes: MODEL_BYTES, loadName: 'le squelette 3D', desc: 'data/bones-desc.json',
-    sub: 'Trouvez tous les os du corps humain', count: 206, color: () => 0xe6d9bf, ghost: 0.22,
+    sub: 'Trouvez tous les os du corps humain', count: 206, color: () => 0xe4d6b8, ghost: 0.22,
     sets: { names: '60 noms', all: 'Les 206' }, setTitle: 'Os', search: 'Trouver un os', placeholder: 'ex. : hamatum, 7e côte, T4',
     hintsOn: 'Les noms incluent des repères courants, comme « Patella (rotule) » et « 5e métacarpien (auriculaire) ».',
     hintsOff: 'Noms techniques uniquement, comme « Patella » et « Phalange distale du 5e orteil ». Les doigts et orteils sont numérotés à partir du pouce et du gros orteil (1er).',
@@ -798,9 +798,12 @@ const state = {
   xray: false, peel: false, clean: false,
   hidden: new Set(),
   ghost: new Set(),   // structures made see-through one by one (fiche, Rayons X): not clickable, so what is behind can be
-  layers: new Set(store.get('layers', ['bones'])),
-  layerLook: store.get('layerLook', 'solid'),   // layers in Study: 'solid' (clickable, like the studied system) or 'ghost'   // other systems shown as see-through landmarks (the skeleton by default)
+  layers: new Set(store.get('layers', ['bones'])),   // other systems shown at the same time (the skeleton by default)
+  looks: store.get('layerLooks', {}),   // per layer, in Study: 'solid' (clickable, like the studied system) or 'ghost'
 };
+// The skeleton, on by default as a landmark, is see-through unless asked otherwise (it would hide the heart and brain);
+// systems switched on by hand are solid.
+const lookOf = (key) => state.looks[key] || (key === 'bones' ? 'ghost' : 'solid');
 if (!['study', 'practice', 'test'].includes(state.mode)) state.mode = 'study';
 if (!['names', 'all'].includes(state.set)) state.set = 'names';
 if (!validSection(state.section)) state.section = 'all';
@@ -930,6 +933,10 @@ function makePlatform() {
   const grad = g.createRadialGradient(c, c, 0, c, c, c);
   grad.addColorStop(0, 'rgba(111,208,232,0.16)'); grad.addColorStop(0.55, 'rgba(111,208,232,0.05)'); grad.addColorStop(1, 'rgba(111,208,232,0)');
   g.fillStyle = grad; g.fillRect(0, 0, S, S);
+  // soft contact shadow under the feet (the body stands at the centre)
+  const sh = g.createRadialGradient(c, c, 0, c, c, c * 0.3);
+  sh.addColorStop(0, 'rgba(0,0,0,0.55)'); sh.addColorStop(0.45, 'rgba(0,0,0,0.28)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  g.save(); g.translate(c, c); g.scale(1.25, 0.8); g.translate(-c, -c); g.fillStyle = sh; g.fillRect(0, 0, S, S); g.restore();
   g.strokeStyle = 'rgba(140,200,220,0.28)'; g.lineWidth = 2;
   for (const r of [0.62, 0.86]) { g.beginPath(); g.arc(c, c, c * r, 0, Math.PI * 2); g.stroke(); }
   for (let a = 0; a < 360; a += 10) {
@@ -973,10 +980,86 @@ const layersClickable = () => state.mode === 'study' || !!review;
 const occ = { recs: new Set(), ctx: new Set(), key: '' };
 let modelBox = new THREE.Box3();
 
+/* ---------------- tissue materials ---------------- */
+// The models carry no textures, so surface detail is computed in the shader from the world position: a fine relief
+// (bump) and a slight variation of colour and roughness. For fibrous tissue (muscle, tendon, nerve) the relief is
+// stretched along the structure's main axis, which reads as fibres. Detail fades out when it gets smaller than a pixel.
+// freq: detail per metre; stretch < 1 elongates it along the axis; bump: relief height in metres; tint: colour variation.
+const TISSUE = {
+  bone:      { freq: 520,  stretch: 1,    bump: 0.00016, tint: 0.10, rough: 0.62, coat: 0,    sheen: 0 },
+  muscle:    { freq: 1500, stretch: 0.05, bump: 0.00022, tint: 0.14, rough: 0.5,  coat: 0.35, sheen: 0.5 },
+  tendon:    { freq: 2200, stretch: 0.06, bump: 0.00008, tint: 0.06, rough: 0.35, coat: 0.5,  sheen: 0.3 },
+  fascia:    { freq: 1800, stretch: 0.1,  bump: 0.00006, tint: 0.06, rough: 0.4,  coat: 0.45, sheen: 0.2 },
+  smooth:    { freq: 450,  stretch: 1,    bump: 0.00004, tint: 0.07, rough: 0.32, coat: 0.6,  sheen: 0 },
+  nerve:     { freq: 1900, stretch: 0.07, bump: 0.00012, tint: 0.08, rough: 0.45, coat: 0.35, sheen: 0.2 },
+  brain:     { freq: 380,  stretch: 1,    bump: 0.00012, tint: 0.08, rough: 0.5,  coat: 0.4,  sheen: 0.2 },
+  soft:      { freq: 520,  stretch: 1,    bump: 0.0001,  tint: 0.08, rough: 0.45, coat: 0.35, sheen: 0.1 },
+};
+const KIND_TISSUE = {
+  muscle: 'muscle', heart: 'muscle', tendon: 'tendon', valve: 'tendon', fascia: 'fascia', bourse: 'smooth', gaine: 'smooth',
+  artery: 'smooth', vein: 'smooth', pulmart: 'smooth', pulmvein: 'smooth', duct: 'smooth', collector: 'smooth', ventricle: 'smooth',
+  nerve: 'nerve', ganglion: 'nerve', white: 'nerve', grey: 'brain', sulcus: 'brain', nucleus: 'brain', meninge: 'fascia',
+  sense: 'soft', node: 'soft', organ: 'soft',
+};
+const TISSUE_GLSL = `
+varying vec3 vRealPos;
+uniform vec3 uAxis; uniform float uFreq, uStretch, uBump, uTint;
+float rHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float rNoise(vec3 x) {
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(rHash(i), rHash(i + vec3(1, 0, 0)), f.x), mix(rHash(i + vec3(0, 1, 0)), rHash(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(rHash(i + vec3(0, 0, 1)), rHash(i + vec3(1, 0, 1)), f.x), mix(rHash(i + vec3(0, 1, 1)), rHash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+float rHeight(vec3 p) {
+  vec3 q = p * uFreq; float a = dot(q, uAxis); vec3 s = (q - uAxis * a) + uAxis * a * uStretch;
+  return 0.65 * rNoise(s) + 0.35 * rNoise(s * 2.3 + 7.1);
+}
+`;
+function makeTissue(kind, base, axis) {
+  const t = TISSUE[KIND_TISSUE[kind] || 'bone'] || TISSUE.bone;
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: base, roughness: t.rough, metalness: 0, envMapIntensity: 0.9,
+    clearcoat: t.coat, clearcoatRoughness: 0.4, sheen: t.sheen, sheenRoughness: 0.5, sheenColor: new THREE.Color(base).lerp(new THREE.Color(0xffffff), 0.35),
+  });
+  mat.customProgramCacheKey = () => 'tissue';
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { uAxis: { value: axis }, uFreq: { value: t.freq }, uStretch: { value: t.stretch }, uBump: { value: t.bump }, uTint: { value: t.tint } });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRealPos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRealPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + TISSUE_GLSL)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float rFade = clamp(1.4 - length(fwidth(vRealPos)) * uFreq * 1.2, 0.0, 1.0);
+        float rH = rHeight(vRealPos), rV = rNoise(vRealPos * uFreq * 0.08 + 3.7);
+        diffuseColor.rgb *= 1.0 + uTint * ((rV - 0.5) * 1.6 + (rH - 0.5) * 0.6 * rFade);`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (1.0 + 0.35 * (rV - 0.5)), 0.05, 1.0);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          vec3 sp = -vViewPosition, sx = dFdx(sp), sy = dFdy(sp);
+          vec2 dh = vec2(dFdx(rH), dFdy(rH)) * uBump * rFade;
+          vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+          float det = dot(sx, r1) * faceDirection;
+          vec3 grad = sign(det) * (dh.x * r1 + dh.y * r2);
+          normal = normalize(abs(det) * normal - grad);
+        }`);
+  };
+  return mat;
+}
+// main axis of a mesh (first principal component of its points), the direction its fibres run in
+function mainAxis(points) {
+  const m = new THREE.Vector3(); for (const p of points) m.add(p); m.divideScalar(points.length || 1);
+  const c = [0, 0, 0, 0, 0, 0]; // xx xy xz yy yz zz
+  for (const p of points) { const x = p.x - m.x, y = p.y - m.y, z = p.z - m.z; c[0] += x * x; c[1] += x * y; c[2] += x * z; c[3] += y * y; c[4] += y * z; c[5] += z * z; }
+  const v = new THREE.Vector3(0.3, 1, 0.2).normalize();
+  for (let i = 0; i < 16; i++) v.set(c[0] * v.x + c[1] * v.y + c[2] * v.z, c[1] * v.x + c[3] * v.y + c[4] * v.z, c[2] * v.x + c[4] * v.y + c[5] * v.z).normalize();
+  return v;
+}
+
 function boneRecord(mesh, data, base = COL.bone) {
   mesh.geometry.computeBoundingSphere();
   const sphere = mesh.geometry.boundingSphere.clone().applyMatrix4(mesh.matrixWorld);
-  const mat = new THREE.MeshStandardMaterial({ color: base, roughness: 0.6, metalness: 0, envMapIntensity: 0.9 });
+  const pts = [], pa = mesh.geometry.attributes.position, sv = new THREE.Vector3();
+  for (let i = 0, st = Math.max(1, Math.floor(pa.count / 400)); i < pa.count; i += st) pts.push(sv.fromBufferAttribute(pa, i).applyMatrix4(mesh.matrixWorld).clone());
+  const mat = makeTissue(data.kind || 'bone', base, mainAxis(pts));
   mesh.material = mat;
   const overlay = new THREE.Mesh(mesh.geometry, overlayMat);
   overlay.visible = false; overlay.renderOrder = 10; overlay.raycast = () => {};
@@ -1241,10 +1324,11 @@ function applyVisibility() {
   }
   // other systems switched on as layers. In Study (and a test's review) they can be shown solid and are clickable:
   // a touch opens their fiche. During Practice and Test they stay see-through landmarks, so the quiz stays fair.
-  const browsing = layersClickable(), solid = browsing && state.layerLook === 'solid';
+  const browsing = layersClickable();
   layerRecs = [];
   for (const s of SYSTEMS) {
     if (s === sys || !RT[s.key] || !RT[s.key].loaded) continue;
+    const solid = browsing && lookOf(s.key) === 'solid';
     const on = state.layers.has(s.key), op = solid ? (state.xray ? 0.32 : 1) : (state.xray ? s.ghost * 0.6 : s.ghost);
     const apart = new Set(s.data.regions.filter(g => g.separate).map(g => g.key));   // fascias, dura…: not over the rest
     for (const r of RT[s.key].recs.values()) {
@@ -1944,12 +2028,14 @@ function renderLayers() {
     b.dataset.layer = s.key; b.title = `Afficher aussi : ${s.label.toLowerCase()}`;
     return b;
   }));
-  $('lookSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state.layerLook)));
+  const looks = new Set([...state.layers].filter(k => k !== sys.key && SYS[k] && !SYS[k].soon).map(lookOf));   // one look shared by every layer shown, or none pressed
+  $('lookSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(looks.size === 1 && looks.has(b.dataset.v))));
   $('layerHint').textContent = `Affichez d’autres systèmes en même temps que « ${sys.label} ». Opaques : en révision, touchez-les pour ouvrir leur fiche. Transparents : on voit à travers et on touche « ${sys.label} ». En entraînement et en test, ils restent transparents.`;
 }
 $('lookSeg').addEventListener('click', (e) => {
-  const v = e.target.closest('button')?.dataset.v; if (!v || v === state.layerLook) return;
-  state.layerLook = v; store.set('layerLook', v); renderLayers(); applyVisibility();
+  const v = e.target.closest('button')?.dataset.v; if (!v) return;
+  for (const k of state.layers) if (k !== sys.key) state.looks[k] = v;   // applies to every layer shown
+  store.set('layerLooks', state.looks); renderLayers(); applyVisibility();
 });
 $('sysGrid').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-sys]'); if (!b || b.disabled || b.dataset.sys === sys.key) return;
