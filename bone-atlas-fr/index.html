@@ -297,6 +297,12 @@ body.clean .ractions, body.clean .rhint { display: none; }
 
 .ic-actions { display: flex; gap: 6px; }
 
+.layer-sec { display: grid; gap: 6px; margin-top: 10px; }
+
+.layer-sec h4 { margin: 0px 0px 0px 2px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+
+.layer-sec .seg button { padding: 5px 6px; font-size: 12.5px; }
+
 .ic-actions .btn { flex: 1 1 0px; padding: 7px 10px; font-size: 13px; }
 
 .toast.bad { border-color: var(--bad); }
@@ -484,10 +490,6 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
           <button class="btn" type="button" data-view="right" title="Regarder le côté droit du corps">Droite</button>
         </div>
       </div>
-      <div class="vc-sec" id="layerSec" hidden>
-        <h4>Afficher aussi</h4>
-        <div class="zp-grid" id="layerGrid"></div>
-      </div>
       <div class="vc-tools">
         <button class="btn" id="xrayBtn" type="button" aria-pressed="false" title="Voir à travers les os et cliquer sur ceux cachés derrière d’autres (X)">Rayons X</button>
         <button class="btn" id="peelBtn" type="button" aria-pressed="false" title="Cliquez sur un os pour le masquer et voir ce qu’il y a dessous. Maj + clic fait la même chose.">Effeuiller</button>
@@ -503,6 +505,15 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
     <section>
       <h3>Système</h3>
       <div class="zp-grid sys-grid" id="sysGrid"></div>
+      <div class="layer-sec" id="layerSec" hidden>
+        <h4>Superposer</h4>
+        <div class="zp-grid" id="layerGrid"></div>
+        <div class="seg" id="lookSeg">
+          <button type="button" data-v="solid" aria-pressed="true">Opaques</button>
+          <button type="button" data-v="ghost" aria-pressed="false">Transparents</button>
+        </div>
+        <p class="hint" id="layerHint"></p>
+      </div>
     </section>
     <section>
       <h3>Mode</h3>
@@ -787,7 +798,8 @@ const state = {
   xray: false, peel: false, clean: false,
   hidden: new Set(),
   ghost: new Set(),   // structures made see-through one by one (fiche, Rayons X): not clickable, so what is behind can be
-  layers: new Set(store.get('layers', ['bones'])),   // other systems shown as see-through landmarks (the skeleton by default)
+  layers: new Set(store.get('layers', ['bones'])),
+  layerLook: store.get('layerLook', 'solid'),   // layers in Study: 'solid' (clickable, like the studied system) or 'ghost'   // other systems shown as see-through landmarks (the skeleton by default)
 };
 if (!['study', 'practice', 'test'].includes(state.mode)) state.mode = 'study';
 if (!['names', 'all'].includes(state.set)) state.set = 'names';
@@ -954,6 +966,9 @@ const ctxMats = {
 let bones = rt(sys.key).recs;   // the active system's records: id -> record
 let ctxPieces = rt(sys.key).ctx;   // the active system's context meshes
 let pickables = [], blockers = [], liveMeshes = [];
+let layerRecs = [];   // shown records of the other systems (layers)
+// layers can be touched (fiche) while browsing: Study mode, or the review after a test
+const layersClickable = () => state.mode === 'study' || !!review;
 // bones/pieces between the camera and the bone being shown get faded so it is never buried (Study and Practice reveal)
 const occ = { recs: new Set(), ctx: new Set(), key: '' };
 let modelBox = new THREE.Box3();
@@ -1167,11 +1182,13 @@ function finishSession() {
   $('rPractice').hidden = !missedItems.length;
   renderPrompt(); renderStats(); renderBest();
   $('sTime').textContent = fmtTime(ms);
+  applyVisibility();   // layers become clickable for the review
   frameSection();
 }
 function clearReview() {
   if (!review) return;
   review = null;
+  applyVisibility();
   for (const r of bones.values()) { r.mat.color.setHex(r.base); r.tint = null; }
   $('review').hidden = true; $('pBarWrap').hidden = false; $('skipBtn').hidden = state.mode === 'study';
   setCallout(null);
@@ -1222,15 +1239,25 @@ function applyVisibility() {
     c.mesh.material.opacity = op; c.mesh.material.depthWrite = !transparent;
     if (live) { liveMeshes.push(c.mesh); if (!occ.ctx.has(c.mesh) && CONTEXT_CLICKABLE[c.kind]) blockers.push(c.mesh); }
   }
-  // other systems: see-through landmarks when switched on as a layer, never clickable
+  // other systems switched on as layers. In Study (and a test's review) they can be shown solid and are clickable:
+  // a touch opens their fiche. During Practice and Test they stay see-through landmarks, so the quiz stays fair.
+  const browsing = layersClickable(), solid = browsing && state.layerLook === 'solid';
+  layerRecs = [];
   for (const s of SYSTEMS) {
     if (s === sys || !RT[s.key] || !RT[s.key].loaded) continue;
-    const on = state.layers.has(s.key), op = state.xray ? s.ghost * 0.6 : s.ghost;
+    const on = state.layers.has(s.key), op = solid ? (state.xray ? 0.32 : 1) : (state.xray ? s.ghost * 0.6 : s.ghost);
+    const apart = new Set(s.data.regions.filter(g => g.separate).map(g => g.key));   // fascias, dura…: not over the rest
     for (const r of RT[s.key].recs.values()) {
-      r.mesh.visible = on && inView(r.data);
-      r.overlay.visible = false; r.flash = null; r.mat.emissive.setRGB(0, 0, 0);
-      if (!r.mat.transparent) { r.mat.transparent = true; r.mat.needsUpdate = true; }
-      r.mat.opacity = op; r.mat.depthWrite = false;
+      const shown = on && !apart.has(r.data.region) && inView(r.data) && !state.hidden.has(r.id), see = state.ghost.has(r.id), occluding = occ.recs.has(r);
+      r.mesh.visible = shown;
+      if (info.glow !== r) r.overlay.visible = false;
+      r.flash = null;
+      const o = see ? 0.14 : occluding ? 0.16 : op, transparent = o < 1;
+      if (r.mat.transparent !== transparent) { r.mat.transparent = transparent; r.mat.needsUpdate = true; }
+      r.mat.opacity = o; r.mat.depthWrite = !transparent;
+      if (!shown) continue;
+      layerRecs.push(r);
+      if (!see) { liveMeshes.push(r.mesh); if (solid && !occluding) pickables.push(r.mesh); }   // see-through layers let touches through
     }
     for (const c of RT[s.key].ctx) {
       c.mesh.visible = on && inView(c);
@@ -1281,6 +1308,10 @@ canvas.addEventListener('pointerup', (e) => {
   if (!p) return;
   if (p.ctx) { toast(CONTEXT_NOTE[p.ctx.kind] || sys.outside || 'Ça ne fait pas partie de ce système.'); return; }
   const rec = p.rec;
+  if (rec.sys && rec.sys !== sys) {   // a structure of a layer (Study or review only): its fiche, nothing else
+    if (e.shiftKey || state.peel) hideBone(rec); else openInfo(rec);
+    return;
+  }
   if (e.shiftKey || state.peel) { hideBone(rec); return; }
   if (state.mode === 'study') { studyPick(rec); return; }
   if (review) { reviewPick(rec); return; }
@@ -1327,13 +1358,16 @@ function loadDesc(s) {
   }
   return descCache[s.key];
 }
-const info = { rec: null };
+const info = { rec: null, glow: null };
 function openInfo(rec) {
+  if (info.glow) { info.glow.overlay.visible = false; info.glow = null; }
   info.rec = rec;
-  const d = rec.data, s = sys;
+  const d = rec.data, s = rec.sys || sys, foreign = s !== sys;
+  if (foreign) { rec.overlay.visible = true; info.glow = rec; }   // a layer's structure: lit while its fiche is open
   $('icName').textContent = label(d);
-  const where = d.sub && SUB[d.sub] ? `${REGION[d.region].label} › ${SUB[d.sub].label}` : (REGION[d.region] ? REGION[d.region].label : '');
-  $('icMeta').textContent = [KIND_LABEL[d.kind || 'bone'], where, d.la].filter(Boolean).join(' · ');
+  const reg = s.data.regions.find(r => r.key === d.region), subl = reg && reg.subs.find(x => x.key === d.sub);
+  const where = reg ? (subl ? `${reg.label} › ${subl.label}` : reg.label) : '';
+  $('icMeta').textContent = [foreign ? s.label : '', KIND_LABEL[d.kind || 'bone'], where, d.la].filter(Boolean).join(' · ');
   $('icText').textContent = 'Chargement…'; $('icSrc').textContent = '';
   $('info').hidden = false;
   $('icText').scrollTop = 0;
@@ -1345,7 +1379,10 @@ function openInfo(rec) {
     $('icSrc').textContent = e ? DESC_SOURCE[e[1]] || '' : '';
   });
 }
-function closeInfo() { info.rec = null; $('info').hidden = true; }
+function closeInfo() {
+  if (info.glow) { info.glow.overlay.visible = false; info.glow = null; }
+  info.rec = null; $('info').hidden = true;
+}
 function renderInfoButtons() {
   const r = info.rec; if (!r) return;
   const on = state.ghost.has(r.id);
@@ -1904,10 +1941,16 @@ function renderLayers() {
   $('layerSec').hidden = !avail.length;
   $('layerGrid').replaceChildren(...avail.map((s) => {
     const b = chip(s.label, '', state.layers.has(s.key));
-    b.dataset.layer = s.key; b.title = `Afficher ${s.label.toLowerCase()} en transparence, comme repère (non cliquable)`;
+    b.dataset.layer = s.key; b.title = `Afficher aussi : ${s.label.toLowerCase()}`;
     return b;
   }));
+  $('lookSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === state.layerLook)));
+  $('layerHint').textContent = `Affichez d’autres systèmes en même temps que « ${sys.label} ». Opaques : en révision, touchez-les pour ouvrir leur fiche. Transparents : on voit à travers et on touche « ${sys.label} ». En entraînement et en test, ils restent transparents.`;
 }
+$('lookSeg').addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || v === state.layerLook) return;
+  state.layerLook = v; store.set('layerLook', v); renderLayers(); applyVisibility();
+});
 $('sysGrid').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-sys]'); if (!b || b.disabled || b.dataset.sys === sys.key) return;
   guardTest(`Passer au système « ${SYS[b.dataset.sys].label} »`, () => setSystem(b.dataset.sys));
@@ -1925,6 +1968,7 @@ function renderBest() {
 }
 function setMode(m, restart = true) {
   state.mode = m; store.set('mode', m);
+  applyVisibility();
   renderSegs(); renderBest(); resize();
   if (restart) startSession();
 }
@@ -2120,6 +2164,7 @@ function tick(now) {
     }
     r.mat.emissive.copy(tmpC);
   }
+  for (const r of layerRecs) r.mat.emissive.copy(r === hoverRec ? tmpC.copy(COL.scan).multiplyScalar(0.16) : tmpC.setRGB(0, 0, 0));
   if (session && !session.end && state.mode !== 'study' && !pendingConfirm) $('sTime').textContent = fmtTime(now - session.start);
   camera.updateMatrixWorld();
   updateCallout();
@@ -2158,7 +2203,7 @@ function installModel(s, gltf) {
   root.traverse((o) => {
     if (!o.isMesh) return;
     const id = o.name;
-    if (byId[id]) R.recs.set(id, boneRecord(o, byId[id], s.color(byId[id])));
+    if (byId[id]) { const rec = boneRecord(o, byId[id], s.color(byId[id])); rec.sys = s; R.recs.set(id, rec); }
     else if (context[id]) {
       const [kind, region, sub, side] = context[id];
       o.material = ctxMats[kind].clone(); o.userData.ctx = { kind };
