@@ -40,3 +40,12 @@ Z-Anatomy ne contient que les nœuds et les organes lymphoïdes. Les conduits, t
 3. `node merge.mjs <travail>/za/nq/lymphatic.glb <travail>/za/lymph_vessels.glb <travail>/za/lymph_src.glb`, puis
    `node inventory.mjs <travail>/za/lymph_src.glb <travail>/za/inv/nq_lymph.json`, puis les étapes 2 à 4 ci-dessus avec
    `lymph` (modèle : `lymph_src.glb`, simplification légère `0.5 0.001` pour ne pas déformer les tubes fins).
+
+## Fiches descriptives
+
+Chaque structure a une fiche (`data/<système>-desc.json`, une entrée pour la gauche et la droite) :
+- `desc_src.py` rassemble la définition française de Z-Anatomy quand elle existe (dépôt moueza/Z-Anatomy,
+  `Resources/Descriptions/French definitions`), sinon la description anglaise (`OriginalDescriptions`, d'après Wikipédia) ;
+- les fiches sans définition française ont été rédigées en français pour l'atlas (en partie d'après ces textes anglais,
+  souvent hors sujet) ; elles sont marquées « à vérifier » dans la page ;
+- `desc_build.py` assemble le tout. Pour corriger une fiche, modifier directement son texte dans `data/<système>-desc.json`.

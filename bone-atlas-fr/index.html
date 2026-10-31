@@ -278,6 +278,27 @@ body.clean .ractions, body.clean .rhint { display: none; }
 
 .toast.show { opacity: 1; }
 
+/* fiche of the touched structure: above the dock on desktop, a bottom card on phones */
+.infocard { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 66px); width: min(500px, calc(100vw - 640px)); min-width: 340px; max-height: 46vh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--line-strong); border-radius: var(--r); padding: 12px 14px; z-index: 12; box-shadow: rgba(0, 0, 0, 0.35) 0px 10px 30px; }
+
+.ic-head { display: flex; gap: 10px; align-items: start; justify-content: space-between; }
+
+.ic-titles { min-width: 0px; }
+
+.infocard h3 { margin: 0px; font-size: 16px; font-weight: 750; color: var(--bone); line-height: 1.25; }
+
+.ic-meta { margin: 3px 0px 0px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+.ic-close { padding: 2px 9px; font-size: 13px; flex: 0 0 auto; }
+
+.ic-text { overflow-y: auto; font-size: 13.5px; line-height: 1.5; color: var(--fg); white-space: pre-line; overscroll-behavior: contain; }
+
+.ic-src { margin: 0px; font-size: 11px; color: var(--muted); }
+
+.ic-actions { display: flex; gap: 6px; }
+
+.ic-actions .btn { flex: 1 1 0px; padding: 7px 10px; font-size: 13px; }
+
 .toast.bad { border-color: var(--bad); }
 
 .toast.ok { border-color: var(--ok); }
@@ -357,6 +378,7 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
   .zchip kbd { display: none; }
   .narrow-only { display: block; }
   .callout { font-size: 13px; }
+  .infocard { left: 8px; right: 8px; transform: none; width: auto; min-width: 0px; bottom: calc(env(safe-area-inset-bottom, 0px) + 62px); max-height: 48vh; }
 }
 
 .close-sheet { display: none; justify-self: end; }
@@ -538,6 +560,23 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
 
 <div class="toast" id="toast" role="status"></div>
 
+<!-- what the touched structure is (Study mode and after a test), with hide and see-through for that one structure -->
+<section class="infocard" id="info" hidden aria-labelledby="icName">
+  <div class="ic-head">
+    <div class="ic-titles">
+      <h3 id="icName"></h3>
+      <p class="ic-meta" id="icMeta"></p>
+    </div>
+    <button class="btn ic-close" id="icClose" type="button" aria-label="Fermer la fiche">✕</button>
+  </div>
+  <div class="ic-text" id="icText"></div>
+  <p class="ic-src" id="icSrc"></p>
+  <div class="row ic-actions">
+    <button class="btn" id="icXray" type="button" aria-pressed="false" title="Rendre cette structure transparente pour voir ce qu’il y a derrière">Rayons X</button>
+    <button class="btn" id="icHide" type="button" title="Retirer cette structure de la vue">Masquer</button>
+  </div>
+</section>
+
 <div class="overlay" id="confirm" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
   <div class="card">
     <h2 id="confirmTitle">Arrêter ce test ?</h2>
@@ -645,7 +684,7 @@ const WORDS = {
 const SYSTEMS = [
   {
     key: 'bones', label: 'Os', words: WORDS.bone, data: BONES_DATA,
-    url: MODEL_URL, fallback: MODEL_URL_FALLBACK, bytes: MODEL_BYTES, loadName: 'le squelette 3D',
+    url: MODEL_URL, fallback: MODEL_URL_FALLBACK, bytes: MODEL_BYTES, loadName: 'le squelette 3D', desc: 'data/bones-desc.json',
     sub: 'Trouvez tous les os du corps humain', count: 206, color: () => 0xe6d9bf, ghost: 0.22,
     sets: { names: '60 noms', all: 'Les 206' }, setTitle: 'Os', search: 'Trouver un os', placeholder: 'ex. : hamatum, 7e côte, T4',
     hintsOn: 'Les noms incluent des repères courants, comme « Patella (rotule) » et « 5e métacarpien (auriculaire) ».',
@@ -653,7 +692,7 @@ const SYSTEMS = [
     outside: 'Ça ne fait pas partie des 206 os.',
   },
   {
-    key: 'muscles', label: 'Muscles', words: WORDS.structure, dataUrl: 'data/muscles.json',
+    key: 'muscles', label: 'Muscles', words: WORDS.structure, dataUrl: 'data/muscles.json', desc: 'data/muscles-desc.json',
     url: 'muscles.glb', bytes: MUSCLES_BYTES, loadName: 'les muscles',
     sub: 'Muscles, tendons, fascias, bourses et gaines', count: 669, ghost: 0.18,
     color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.muscle,
@@ -663,7 +702,7 @@ const SYSTEMS = [
     outside: 'Ça ne fait pas partie de ce système.',
   },
   {
-    key: 'nerves', label: 'Nerveux', words: WORDS.structure, dataUrl: 'data/nerves.json',
+    key: 'nerves', label: 'Nerveux', words: WORDS.structure, dataUrl: 'data/nerves.json', desc: 'data/nerves-desc.json',
     url: 'nerves.glb', bytes: NERVES_BYTES, loadName: 'le système nerveux',
     sub: 'Encéphale, moelle spinale, nerfs et organes des sens', count: 580, ghost: 0.25,
     color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.nerve,
@@ -673,7 +712,7 @@ const SYSTEMS = [
     outside: 'Ça ne fait pas partie de ce système.',
   },
   {
-    key: 'vessels', label: 'Sanguin', words: WORDS.structure, dataUrl: 'data/vessels.json',
+    key: 'vessels', label: 'Sanguin', words: WORDS.structure, dataUrl: 'data/vessels.json', desc: 'data/vessels-desc.json',
     url: 'vessels.glb', bytes: VESSELS_BYTES, loadName: 'le système sanguin',
     sub: 'Cœur, artères, veines et sinus veineux', count: 673, ghost: 0.2,
     color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.artery,
@@ -683,7 +722,7 @@ const SYSTEMS = [
     outside: 'Ça ne fait pas partie de ce système.',
   },
   {
-    key: 'lymph', label: 'Lymphatique', words: WORDS.structure, dataUrl: 'data/lymph.json',
+    key: 'lymph', label: 'Lymphatique', words: WORDS.structure, dataUrl: 'data/lymph.json', desc: 'data/lymph-desc.json',
     url: 'lymph.glb', bytes: LYMPH_BYTES, loadName: 'le système lymphatique',
     sub: 'Nœuds, conduits, troncs, collecteurs et organes lymphoïdes', count: 204, ghost: 0.3,
     color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.node,
@@ -747,6 +786,7 @@ const state = {
   view: 'all', viewSide: 'both',          // camera zoom: an area and side to look at, separate from what is being quizzed
   xray: false, peel: false, clean: false,
   hidden: new Set(),
+  ghost: new Set(),   // structures made see-through one by one (fiche, Rayons X): not clickable, so what is behind can be
   layers: new Set(store.get('layers', ['bones'])),   // other systems shown as see-through landmarks (the skeleton by default)
 };
 if (!['study', 'practice', 'test'].includes(state.mode)) state.mode = 'study';
@@ -1006,11 +1046,13 @@ function studyStep(d) {
   if (state.mode !== 'study' || !study || !study.items.length) return;
   study.index = (study.index + d + study.items.length) % study.items.length;
   showStudyItem(true);
+  if (info.rec) { const first = [...study.items[study.index].accept].map(id => bones.get(id)).find(Boolean); if (first) openInfo(first); }   // an open fiche follows
 }
 
 /* ---------------- quiz session (practice / test) ---------------- */
 let session = null, sessionSeq = 0, review = null;
 function startSession(onlyKeys) {
+  closeInfo();
   clearQuizVisuals();
   clearReview();
   if (state.mode === 'study') { session = null; startStudy(); renderStats(); return; }
@@ -1147,6 +1189,7 @@ function reviewPick(rec) {
   if (!st) return;
   const text = `${label(rec.data)} : ${st === 'ok' ? (state.mode === 'test' ? 'réussi' : 'du premier coup') : (state.mode === 'test' ? 'raté' : 'avec aide')}`;
   setCallout({ name: text, accept: new Set([rec.id]) }, rec.id);
+  openInfo(rec);
 }
 $('rAgain').addEventListener('click', () => startSession());
 $('rPractice').addEventListener('click', () => {
@@ -1164,11 +1207,12 @@ function applyVisibility() {
     const hidden = state.hidden.has(r.id) || (!quizzed && SEPARATE.has(r.data.region));
     const occluding = occ.recs.has(r);
     r.mesh.visible = !hidden;
-    const opacity = !live ? (quizzed ? 0.03 : 0.07) : occluding ? 0.16 : (state.xray ? 0.32 : 1);
+    const ghost = state.ghost.has(r.id);
+    const opacity = !live ? (quizzed ? 0.03 : 0.07) : ghost ? 0.14 : occluding ? 0.16 : (state.xray ? 0.32 : 1);
     const transparent = opacity < 1;
     if (r.mat.transparent !== transparent) { r.mat.transparent = transparent; r.mat.needsUpdate = true; }
     r.mat.opacity = opacity; r.mat.depthWrite = !transparent;
-    if (live && !hidden) { liveMeshes.push(r.mesh); if (!occluding) pickables.push(r.mesh); }
+    if (live && !hidden && !ghost) { liveMeshes.push(r.mesh); if (!occluding) pickables.push(r.mesh); }
   }
   for (const c of ctxPieces) {
     const live = inSection(c) && inView(c);
@@ -1194,9 +1238,9 @@ function applyVisibility() {
       c.mesh.material.opacity = Math.min(c.baseOpacity, op); c.mesh.material.depthWrite = false;
     }
   }
-  const n = state.hidden.size, e = W.fem ? 'e' : '';
-  $('unhideBtn').hidden = n === 0;   // only there when something is hidden
-  $('unhideBtn').textContent = `Afficher ${n} ${n > 1 ? W.many : W.one} masqué${e}${n > 1 ? 's' : ''}`;
+  const n = state.hidden.size + state.ghost.size, e = W.fem ? 'e' : '';
+  $('unhideBtn').hidden = n === 0;   // only there when something is hidden or see-through
+  $('unhideBtn').textContent = state.ghost.size ? `Rétablir ${n} ${n > 1 ? W.many : W.one}` : `Afficher ${n} ${n > 1 ? W.many : W.one} masqué${e}${n > 1 ? 's' : ''}`;
 }
 
 /* ---------------- picking ---------------- */
@@ -1248,14 +1292,73 @@ function studyPick(rec) {
   if (idx < 0) return;
   study.index = idx;
   showStudyItem(false, rec.id);
+  openInfo(rec);
 }
 function hideBone(rec) {
+  if (info.rec === rec) closeInfo();
   state.hidden.add(rec.id);
   rec.overlay.visible = false;
   applyVisibility();
   const e = W.fem ? 'e' : '';
   toast(`Masqué${e} : ${lowerFirst(label(rec.data))}. Utilisez « Afficher les ${W.many} masqué${e}s » pour ${W.pro === 'la' ? 'la' : 'le'} faire réapparaître.`);
 }
+
+/* ---------------- fiche: what the touched structure is ---------------- */
+// Descriptions live in each system's desc file ({ base id: [text, source] }, left and right sharing one entry),
+// fetched the first time a fiche opens in that system.
+const DESC_SOURCE = {
+  za: 'Définition : Z-Anatomy (CC BY-SA 4.0).',
+  zap: 'Définition de la structure entière : Z-Anatomy (CC BY-SA 4.0).',
+  wiki: 'Rédigé pour cet atlas, en partie d’après Wikipédia (CC BY-SA) : à vérifier dans votre cours.',
+  atlas: 'Rédigé pour cet atlas : à vérifier dans votre cours.',
+};
+const KIND_LABEL = {
+  bone: 'os', muscle: 'muscle', tendon: 'tendon ou aponévrose', fascia: 'fascia', bourse: 'bourse séreuse', gaine: 'gaine tendineuse',
+  grey: 'substance grise', sulcus: 'sillon', nucleus: 'noyau', white: 'substance blanche', ventricle: 'cavité ventriculaire', meninge: 'méninge',
+  nerve: 'nerf', ganglion: 'ganglion', sense: 'organe des sens', artery: 'artère', vein: 'veine', pulmart: 'artère pulmonaire', pulmvein: 'veine pulmonaire',
+  heart: 'cœur', valve: 'valve', node: 'nœud lymphatique', organ: 'organe lymphoïde', duct: 'conduit ou tronc lymphatique', collector: 'collecteurs lymphatiques',
+};
+const descCache = {};
+function loadDesc(s) {
+  if (!s.desc) return Promise.resolve(null);
+  if (!descCache[s.key]) {
+    descCache[s.key] = fetch(s.desc).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch((err) => { console.warn('descriptions', err); delete descCache[s.key]; return null; });
+  }
+  return descCache[s.key];
+}
+const info = { rec: null };
+function openInfo(rec) {
+  info.rec = rec;
+  const d = rec.data, s = sys;
+  $('icName').textContent = label(d);
+  const where = d.sub && SUB[d.sub] ? `${REGION[d.region].label} › ${SUB[d.sub].label}` : (REGION[d.region] ? REGION[d.region].label : '');
+  $('icMeta').textContent = [KIND_LABEL[d.kind || 'bone'], where, d.la].filter(Boolean).join(' · ');
+  $('icText').textContent = 'Chargement…'; $('icSrc').textContent = '';
+  $('info').hidden = false;
+  $('icText').scrollTop = 0;
+  renderInfoButtons();
+  loadDesc(s).then((all) => {
+    if (info.rec !== rec) return;   // another structure was touched meanwhile
+    const e = all && all[rec.id.replace(/_[lr]$/, '')];
+    $('icText').textContent = e ? e[0] : (all ? 'Pas encore de description pour cette structure.' : 'Les descriptions n’ont pas pu être chargées. Vérifiez votre connexion.');
+    $('icSrc').textContent = e ? DESC_SOURCE[e[1]] || '' : '';
+  });
+}
+function closeInfo() { info.rec = null; $('info').hidden = true; }
+function renderInfoButtons() {
+  const r = info.rec; if (!r) return;
+  const on = state.ghost.has(r.id);
+  $('icXray').setAttribute('aria-pressed', String(on));
+  $('icXray').textContent = on ? 'Rendre opaque' : 'Rayons X';
+}
+$('icClose').addEventListener('click', closeInfo);
+$('icHide').addEventListener('click', () => { if (info.rec) hideBone(info.rec); });
+$('icXray').addEventListener('click', () => {
+  const r = info.rec; if (!r) return;
+  if (state.ghost.has(r.id)) state.ghost.delete(r.id); else state.ghost.add(r.id);
+  applyVisibility(); renderInfoButtons();
+});
 
 /* ---------------- search (study) ---------------- */
 // lower case without accents, so “femur” finds “Fémur”
@@ -1858,7 +1961,7 @@ function setXray(on) {
 }
 $('xrayBtn').addEventListener('click', () => setXray(!state.xray));
 $('peelBtn').addEventListener('click', () => { state.peel = !state.peel; $('peelBtn').setAttribute('aria-pressed', String(state.peel)); toast(state.peel ? `Mode effeuillage activé : cliquer sur ${W.a} ${W.pro} masque.` : 'Mode effeuillage désactivé.'); });
-$('unhideBtn').addEventListener('click', () => { state.hidden.clear(); applyVisibility(); closeViewSheetOnPhone(); });
+$('unhideBtn').addEventListener('click', () => { state.hidden.clear(); state.ghost.clear(); applyVisibility(); renderInfoButtons(); closeViewSheetOnPhone(); });
 $('resetBtn').addEventListener('click', () => { frameSection(); closeViewSheetOnPhone(); });
 $('restartBtn').addEventListener('click', () => guardTest('Recommencer', () => startSession()));
 $('skipBtn').addEventListener('click', skip);
@@ -1888,6 +1991,7 @@ window.addEventListener('keydown', (e) => {
   else if (/^[0-9]$/.test(k)) zoomKey((Number(k) + 9) % 10);
   else if (k === 'c') setClean(!state.clean);
   else if (k === 'r') frameSection();
+  else if (k === 'escape' && !$('info').hidden) closeInfo();
   else if (k === 'escape') {
     const sheetOpen = /(^|\s)(sheet|view)-open(\s|$)/.test(document.body.className);
     if (sheetOpen) setSheet(null);
@@ -2109,12 +2213,13 @@ async function setSystem(key) {
   sstore = storeFor(s); store.set('system', s.key);
   state.set = sstore.get('set', 'names'); if (!s.sets[state.set]) state.set = 'names';
   state.section = sstore.get('section', 'all'); if (!validSection(state.section)) state.section = 'all';
-  state.hidden.clear(); state.view = 'all'; state.viewSide = 'both';
+  state.hidden.clear(); state.ghost.clear(); closeInfo(); state.view = 'all'; state.viewSide = 'both';
   occ.key = ''; occ.recs = new Set(); occ.ctx = new Set(); autoView = '';
   renderWords(); renderSystems(); renderLayers(); renderSegs(); renderRail(); renderBest(); renderZoom(); renderSearch();
   applyVisibility(); resize();
   frameSection(); startSession();
   loadLayers();
+  loadDesc(s);   // fetched now so the first fiche opens at once
 }
 function setLayer(key, on) {
   if (on) state.layers.add(key); else state.layers.delete(key);
@@ -2127,7 +2232,7 @@ function onBonesReady(R) {
   if (location.hash === '#selftest') {
     window.__the206.t = { THREE, bones, state, camera, controls, pickAt, applyVisibility, setSection, setXray, setMode, startSession,
       frameSection, getSession: () => session, getStudy: () => study, setHints, setView, zoomKey, studyStep, renderPrompt, cancelFly, buildItems, countFor, layout,
-      ctxPieces, CONTEXT_CLICKABLE, SYSTEMS, SYS, RT, setSystem, loadSystem, renderSystems, renderLayers, setLayer, getBones: () => bones, getSys: () => sys, answer, skip, studyPick, renderSearch, quizIds, getReview: () => review, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
+      ctxPieces, CONTEXT_CLICKABLE, SYSTEMS, SYS, RT, setSystem, loadSystem, renderSystems, renderLayers, setLayer, getBones: () => bones, getSys: () => sys, answer, skip, studyPick, renderSearch, quizIds, getReview: () => review, openInfo, closeInfo, getInfo: () => info, reviewPick, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
       flyNow: () => { if (!fly) return; controls.target.copy(fly.t1); sphNow.set(fly.r1, fly.ph1, fly.th0 + fly.dth).makeSafe(); camera.position.setFromSpherical(sphNow).add(controls.target); fly = null; controls.update(); camera.updateMatrixWorld(); } };
   }
   applyVisibility();
@@ -2139,6 +2244,7 @@ function onBonesReady(R) {
   $('loading').hidden = true;
   startSession();
   loadLayers();
+  loadDesc(SYS.bones);
   const saved = SYS[store.get('system', 'bones')];
   if (saved && saved !== sys && !saved.soon) setSystem(saved.key);
 }
