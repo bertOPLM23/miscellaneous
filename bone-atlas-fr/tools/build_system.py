@@ -35,6 +35,7 @@ missing_rows = set()
 for m in inv:
     name = m['name']; en = base_of(name).strip()
     side = {'l': 'L', 'r': 'R'}.get(name[-1]) if re.search(r'\.(l|r)$', name) else ''
+    if en in getattr(M, 'IGNORE', ()): continue   # unnamed pieces in the source: left out of the page and the model
     r = rows.get(en)
     if not r: missing_rows.add(en); continue
     reg, sub = r['sec'].split('/')

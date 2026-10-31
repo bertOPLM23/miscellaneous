@@ -14,7 +14,7 @@ Ces fichiers sont attendus dans `<travail>/za/`, et les tables `<système>_fr.py
 
 ## Générer un système
 
-1. `<système>_fr.py` (`muscles_fr.py`, `nerves_fr.py`) : la table de correspondance, à corriger en cas d'erreur
+1. `<système>_fr.py` (`muscles_fr.py`, `nerves_fr.py`, `vessels_fr.py`) : la table de correspondance, à corriger en cas d'erreur
    de nom. Une ligne par structure : nom anglais Z-Anatomy, nom officiel français, nom usuel, région/sous-région,
    type, groupe des essentiels. Le fichier contient aussi les régions, les astuces, les groupes à plusieurs
    pièces, les régions révisées à part et la règle de cadrage de la caméra (`camera`).
