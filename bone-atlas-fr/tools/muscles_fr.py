@@ -431,3 +431,28 @@ TIPS = {
     'ful': 'Les rétinaculums du poignet maintiennent les tendons ; sous le rétinaculum des fléchisseurs passe le canal carpien (nerf médian).',
     'fll': 'Les bourses du genou (prépatellaire, infrapatellaire, suprapatellaire) sont souvent en cause dans les bursites ; la suprapatellaire communique avec l’articulation.',
 }
+
+# ---- réglages du générateur (build_system.py) ----
+INVENTORY = 'nq_muscular'
+PREFIX = 'm_'
+SEPARATE = {'annex'}   # révisés à part, jamais dans « Corps entier » (ils recouvriraient les muscles)
+FEMININE = ['partie', 'parties', 'bourse', 'bourses', 'gaine', 'gaines', 'aponévrose', 'arcade', 'lame', 'trochlée', 'ligne']
+PLURAL = ['muscles', 'parties', 'bourses', 'gaines', 'tendons']
+ZONE = {'face': 'head', 'mastic': 'head', 'eye': 'head', 'tongue': 'head', 'suprahy': 'head', 'infrahy': 'head', 'neckm': 'head', 'pharynx': 'head',
+        'backsup': 'torso/spine', 'backmid': 'torso/spine', 'backdeep': 'torso/spine', 'subocc': 'head',
+        'thorax': 'torso/ribcage', 'abdomen': 'torso/pelvis', 'pelvis': 'torso/pelvis',
+        'shoulder': 'arm', 'armc': 'arm', 'fant': 'arm', 'fpost': 'arm', 'hand': 'hand',
+        'glut': 'torso/pelvis', 'thant': 'leg', 'thmed': 'leg', 'thpost': 'leg', 'legant': 'leg', 'leglat': 'leg', 'legpost': 'leg', 'foot': 'foot'}
+BACK_SUBS = {'backsup', 'backmid', 'backdeep', 'subocc', 'glut', 'thpost', 'legpost', 'fpost'}
+BACK_IDS = {'Long head of triceps brachii', 'Lateral head of triceps brachii', 'Medial head of triceps brachii', 'Quadratus lumborum muscle'}
+
+def camera(reg, sub, en, c):
+    """Zone de caméra (clés des régions osseuses) et vue de dos éventuelle."""
+    cy, cz = c[1], c[2]
+    if reg == 'annex':
+        if sub == 'fhead': zone = 'head'
+        elif sub == 'ftrunk': zone = 'torso/spine' if 'thoracolumbar' in en else ('torso/ribcage' if cy > 1.2 else 'torso/pelvis')
+        elif sub == 'ful': zone = 'hand' if cy < 0.83 else 'arm'
+        else: zone = 'foot' if cy < 0.13 else ('torso/pelvis' if cy > 0.75 else 'leg')
+        return zone, 'back' if cz < -0.035 else ''
+    return ZONE[sub], 'back' if (sub in BACK_SUBS or en in BACK_IDS) else ''

@@ -1,4 +1,4 @@
-﻿identifiant;côté;nom officiel;nom affiché avec indices;latin;anglais (Z-Anatomy);région;loge / sous-région;type;groupe des essentiels
+﻿identifiant;côté;nom officiel;nom affiché avec indices;latin;anglais (Z-Anatomy);région;sous-région;type;groupe des essentiels
 m_epicranial_aponeurosis_l;gauche;Aponévrose épicrânienne gauche;Aponévrose épicrânienne gauche (galéa aponévrotique);Galea aponeurotica;Epicranial aponeurosis (left);Tête;Muscles de la face;tendon;Muscle épicrânien
 m_epicranial_aponeurosis_r;droit;Aponévrose épicrânienne droite;Aponévrose épicrânienne droite (galéa aponévrotique);Galea aponeurotica;Epicranial aponeurosis (right);Tête;Muscles de la face;tendon;Muscle épicrânien
 m_frontalis_muscle_l;gauche;Ventre frontal du muscle occipitofrontal, côté gauche;Ventre frontal du muscle occipitofrontal, côté gauche (muscle frontal);Musculus frontalis;Frontalis muscle (left);Tête;Muscles de la face;muscle;Muscle épicrânien

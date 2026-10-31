@@ -370,11 +370,11 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
 <link rel="canonical" href="https://samplesize1.com/tools/bone-atlas/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Atlas anatomique">
-<meta property="og:description" content="Apprenez l’anatomie du corps humain en 3D : les 206 os et les muscles, tendons, fascias, bourses et gaines. Révision, entraînement et tests chronométrés par région. Gratuit, par SampleSize_1.">
+<meta property="og:description" content="Apprenez l’anatomie du corps humain en 3D : les 206 os, les muscles et le système nerveux (encéphale, moelle, nerfs, organes des sens). Révision, entraînement et tests chronométrés par région. Gratuit, par SampleSize_1.">
 <meta property="og:image" content="https://samplesize1.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <title>Atlas anatomique</title>
-<meta name="description" content="Apprenez l’anatomie du corps humain en 3D : les 206 os et les muscles, tendons, fascias, bourses et gaines. Révision, entraînement et tests chronométrés par région. Gratuit, par SampleSize_1.">
+<meta name="description" content="Apprenez l’anatomie du corps humain en 3D : les 206 os, les muscles et le système nerveux (encéphale, moelle, nerfs, organes des sens). Révision, entraînement et tests chronométrés par région. Gratuit, par SampleSize_1.">
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Montserrat:wght@800&amp;display=swap">
@@ -626,9 +626,14 @@ const $ = (id) => document.getElementById(id);
 // A structure may carry zr/zs: the camera zone (same keys as the bone regions) used by the 1–0 zooms and voice,
 // when its quiz region differs from where it sits on the body. Bones have none: their region is their zone.
 // Systems other than bones load (data + model) the first time they are opened or shown as a layer.
+const NERVES_BYTES = 1639888;   // size of nerves.glb, for the progress bar
 const MUSCLES_BYTES = 1991916;   // size of muscles.glb, for the progress bar
 // colours of the non-bone structures, by kind
-const KIND_COLOR = { muscle: 0xb5524b, tendon: 0xe2dccb, fascia: 0xc9c0ae, bourse: 0x8fbcd4, gaine: 0xa9c7a0 };
+const KIND_COLOR = {
+  muscle: 0xb5524b, tendon: 0xe2dccb, fascia: 0xc9c0ae, bourse: 0x8fbcd4, gaine: 0xa9c7a0,   // muscles
+  grey: 0xc9a397, sulcus: 0x8f6a60, nucleus: 0xa9615c, white: 0xebe3d3, ventricle: 0x6fa8d0,  // nervous system
+  meninge: 0xa99ac0, nerve: 0xe3bf4a, ganglion: 0xc99a35, sense: 0xdccbb5,
+};
 const WORDS = {
   bone: { one: 'os', a: 'un os', the: 'l’os', many: 'os', fem: false, pro: 'le' },
   structure: { one: 'structure', a: 'une structure', the: 'la structure', many: 'structures', fem: true, pro: 'la' },
@@ -653,7 +658,16 @@ const SYSTEMS = [
     hintsOff: 'Terminologie anatomique officielle uniquement, comme « Muscle sartorius » et « Muscle long fibulaire ».',
     outside: 'Ça ne fait pas partie de ce système.',
   },
-  { key: 'nerves', label: 'Nerveux', words: WORDS.structure, soon: true },
+  {
+    key: 'nerves', label: 'Nerveux', words: WORDS.structure, dataUrl: 'data/nerves.json',
+    url: 'nerves.glb', bytes: NERVES_BYTES, loadName: 'le système nerveux',
+    sub: 'Encéphale, moelle spinale, nerfs et organes des sens', count: 580, ghost: 0.25,
+    color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.nerve,
+    sets: { names: 'Essentiels', all: 'Toutes' }, setTitle: 'Structures', search: 'Trouver une structure', placeholder: 'ex. : nerf médian, thalamus, Rolando',
+    hintsOn: 'Les noms incluent l’ancien nom ou un repère entre parenthèses, comme « Sillon central (scissure de Rolando) ».',
+    hintsOff: 'Terminologie anatomique officielle uniquement, comme « Sillon central » et « Nerf ischiatique ».',
+    outside: 'Ça ne fait pas partie de ce système.',
+  },
   { key: 'vessels', label: 'Sanguin', words: WORDS.structure, soon: true },
   { key: 'lymph', label: 'Lymphatique', words: WORDS.structure, soon: true },
 ];
@@ -1230,7 +1244,10 @@ function renderSearch() {
   const list = $('searchList');
   if (!q) { list.replaceChildren(); return; }
   const terms = q.split(/\s+/);
-  const found = DATA.bones.filter(b => { const t = fold([b.name, b.tech, DATA.groups[b.group] && DATA.groups[b.group].name, b.la, b.en, b.id].filter(Boolean).join(' ')); return terms.every(w => t.includes(w)); }).slice(0, 12);
+  // names that start with the query first, then names with a word starting with it ("thalamus" before "hypothalamus")
+  const rank = (b) => { const n = fold(label(b)); return n.startsWith(q) ? 0 : (' ' + n).includes(' ' + terms[0]) ? 1 : 2; };
+  const found = DATA.bones.filter(b => { const t = fold([b.name, b.tech, DATA.groups[b.group] && DATA.groups[b.group].name, b.la, b.en, b.id].filter(Boolean).join(' ')); return terms.every(w => t.includes(w)); })
+    .map((b, i) => [b, rank(b), i]).sort((x, y) => x[1] - y[1] || x[2] - y[2]).map(x => x[0]).slice(0, 12);
   list.replaceChildren(...found.map(b => {
     const li = document.createElement('li'); const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = label(b);
     btn.addEventListener('click', () => {
