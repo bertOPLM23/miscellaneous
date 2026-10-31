@@ -297,6 +297,29 @@ body.clean .ractions, body.clean .rhint { display: none; }
 
 .ic-actions { display: flex; gap: 6px; }
 
+/* start menu */
+.menu-card { width: min(880px, 100%); gap: 10px; }
+.menu-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.menu-card h3 { margin: 6px 0px 0px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.mcard { font: inherit; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); cursor: pointer; display: grid; gap: 3px; }
+.mcard:hover, .mcard:focus-visible { border-color: var(--scan); }
+.mcard b { font-size: 14px; font-weight: 700; }
+.mcard small { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.mcard em { font-style: normal; font-family: var(--f-mono); font-size: 11px; color: var(--scan); }
+/* exam */
+.exam-answers { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.exam-answers .btn { padding: 8px 12px; font-size: 13px; }
+.exam-answers .btn.right { border-color: var(--ok); color: var(--ok); }
+.exam-answers .btn.wrong { border-color: var(--bad); color: var(--bad); }
+.exam-card { width: min(620px, 100%); }
+.exam-note { font-size: 40px; font-weight: 800; color: var(--bone); line-height: 1; }
+.exam-log { margin: 0px; padding-left: 22px; display: grid; gap: 6px; font-size: 13px; line-height: 1.4; color: var(--fg); }
+.exam-log li.ok::marker { color: var(--ok); }
+.exam-log li.bad::marker { color: var(--bad); }
+.exam-log small { color: var(--muted); }
+body.exam #prevBtn, body.exam #nextBtn { display: none; }
+
 .layer-sec { display: grid; gap: 6px; margin-top: 10px; }
 
 .layer-sec h4 { margin: 0px 0px 0px 2px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
@@ -434,6 +457,7 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
     <div class="eyebrow" id="pEyebrow">Révision · Corps entier</div>
     <div class="pname" id="pName">Os frontal</div>
     <div class="pmeta" id="pMeta">1 sur 60 · ← → pour avancer, ou cliquez sur un os</div>
+    <div class="exam-answers" id="examAnswers" hidden></div>
     <div class="ptip" id="pTip">206 os dans un squelette adulte type.</div>
     <div class="pbar" id="pBarWrap"><i id="pBar"></i></div>
     <div class="review" id="review" hidden>
@@ -521,6 +545,7 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
         <button type="button" data-v="study" aria-pressed="true">Révision</button>
         <button type="button" data-v="practice" aria-pressed="false">Entraînement</button>
         <button type="button" data-v="test" aria-pressed="false">Test</button>
+        <button type="button" data-v="exam" aria-pressed="false">Examen</button>
       </div>
       <p class="hint" id="modeHint" style="margin-top:7px">Parcourez chaque os avec les flèches ou cliquez sur un os pour voir son nom. Pas de score.</p>
     </section>
@@ -560,6 +585,7 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
   </aside>
 
   <div class="dock">
+    <button class="btn" id="menuBtn" type="button" title="Choisir une visualisation ou lancer un examen">Menu</button>
     <button class="btn" id="prevBtn" type="button">← Précédent</button>
     <button class="btn" id="nextBtn" type="button">Suivant →</button>
     <button class="btn" id="skipBtn" type="button">Montrer</button>
@@ -595,6 +621,40 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
     <div class="row confirm-actions">
       <button class="btn danger" id="confirmYes" type="button">Arrêter le test</button>
       <button class="btn primary" id="confirmNo" type="button">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="menu" hidden role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+  <div class="card menu-card">
+    <div class="menu-head">
+      <h2 id="menuTitle">Atlas anatomique</h2>
+      <button class="btn" id="menuClose" type="button">Reprendre</button>
+    </div>
+    <div class="seg" id="menuMode">
+      <button type="button" data-v="study" aria-pressed="true">Explorer et réviser</button>
+      <button type="button" data-v="exam" aria-pressed="false">Examen noté</button>
+    </div>
+    <p id="menuHint"></p>
+    <h3>Corps entier</h3>
+    <div class="menu-grid" id="menuBody"></div>
+    <h3>Par appareil</h3>
+    <div class="menu-grid" id="menuApp"></div>
+    <h3>Par région</h3>
+    <div class="menu-grid" id="menuReg"></div>
+  </div>
+</div>
+
+<div class="overlay" id="examEnd" hidden role="dialog" aria-modal="true" aria-labelledby="examTitle">
+  <div class="card exam-card">
+    <h2 id="examTitle">Examen terminé</h2>
+    <div class="exam-note" id="examNote"></div>
+    <p id="examMeta"></p>
+    <ol class="exam-log" id="examLog"></ol>
+    <div class="row confirm-actions">
+      <button class="btn" id="examMenu" type="button">Menu</button>
+      <button class="btn" id="examStudy" type="button">Réviser cette zone</button>
+      <button class="btn primary" id="examAgain" type="button">Recommencer</button>
     </div>
   </div>
 </div>
@@ -676,6 +736,7 @@ const $ = (id) => document.getElementById(id);
 // A structure may carry zr/zs: the camera zone (same keys as the bone regions) used by the 1–0 zooms and voice,
 // when its quiz region differs from where it sits on the body. Bones have none: their region is their zone.
 // Systems other than bones load (data + model) the first time they are opened or shown as a layer.
+const ORGANS_BYTES = 737468;   // size of organs.glb, for the progress bar
 const LYMPH_BYTES = 653016;   // size of lymph.glb, for the progress bar
 const VESSELS_BYTES = 1928356;   // size of vessels.glb, for the progress bar
 const NERVES_BYTES = 1639888;   // size of nerves.glb, for the progress bar
@@ -687,6 +748,8 @@ const KIND_COLOR = {
   meninge: 0xb7a9c4, nerve: 0xead9a2, ganglion: 0xd8bd7c, sense: 0xdccbb5,
   artery: 0xb4262d, vein: 0x34529f, pulmart: 0x4f62b3, pulmvein: 0xbd3a3c, heart: 0x983a36, valve: 0xeadfca,   // blood vessels
   node: 0x6dbb63, organ: 0xb06a7d, duct: 0xd8c64a, collector: 0xe3dc86,                                          // lymphatics
+  gut: 0xcf8b7c, liver: 0x8a3a2c, gland: 0xdcae86, bile: 0x5f8a45, lung: 0xd7999a, airway: 0xe6d2bf,              // viscera
+  kidney: 0x8d3d33, urinary: 0xd3a487, genital: 0xc4868a, endocrine: 0xc0785a, mucosa: 0xd0867f, serosa: 0xe5d3b0,
 };
 const WORDS = {
   bone: { one: 'os', a: 'un os', the: 'l’os', many: 'os', fem: false, pro: 'le' },
@@ -740,6 +803,16 @@ const SYSTEMS = [
     sets: { names: 'Essentiels', all: 'Toutes' }, setTitle: 'Structures', search: 'Trouver une structure', placeholder: 'ex. : conduit thoracique, axillaires',
     hintsOn: 'Les noms incluent l’ancien nom ou un repère entre parenthèses, comme « Nœuds cubitaux (ganglions épitrochléens) ».',
     hintsOff: 'Terminologie anatomique officielle uniquement, comme « Nœuds cubitaux » et « Conduit thoracique ».',
+    outside: 'Ça ne fait pas partie de ce système.',
+  },
+  {
+    key: 'organs', label: 'Viscères', words: WORDS.structure, dataUrl: 'data/organs.json', desc: 'data/organs-desc.json',
+    url: 'organs.glb', bytes: ORGANS_BYTES, loadName: 'les viscères',
+    sub: 'Appareils digestif, respiratoire, urinaire, génital et glandes endocrines', count: 118, ghost: 0.28,
+    color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.gut,
+    sets: { names: 'Essentiels', all: 'Toutes' }, setTitle: 'Structures', search: 'Trouver une structure', placeholder: 'ex. : estomac, rein, Wirsung',
+    hintsOn: 'Les noms incluent l’ancien nom ou un repère entre parenthèses, comme « Conduit pancréatique (canal de Wirsung) ».',
+    hintsOff: 'Terminologie anatomique officielle uniquement, comme « Conduit pancréatique » et « Glande séminale ».',
     outside: 'Ça ne fait pas partie de ce système.',
   },
 ];
@@ -975,7 +1048,7 @@ let ctxPieces = rt(sys.key).ctx;   // the active system's context meshes
 let pickables = [], blockers = [], liveMeshes = [];
 let layerRecs = [];   // shown records of the other systems (layers)
 // layers can be touched (fiche) while browsing: Study mode, or the review after a test
-const layersClickable = () => state.mode === 'study' || !!review;
+const layersClickable = () => state.mode === 'study' || !!review || exam.on;
 // bones/pieces between the camera and the bone being shown get faded so it is never buried (Study and Practice reveal)
 const occ = { recs: new Set(), ctx: new Set(), key: '' };
 let modelBox = new THREE.Box3();
@@ -1000,6 +1073,8 @@ const KIND_TISSUE = {
   artery: 'smooth', vein: 'smooth', pulmart: 'smooth', pulmvein: 'smooth', duct: 'smooth', collector: 'smooth', ventricle: 'smooth',
   nerve: 'nerve', ganglion: 'nerve', white: 'nerve', grey: 'brain', sulcus: 'brain', nucleus: 'brain', meninge: 'fascia',
   sense: 'soft', node: 'soft', organ: 'soft',
+  gut: 'soft', liver: 'soft', gland: 'soft', bile: 'smooth', lung: 'soft', airway: 'tendon', kidney: 'soft', urinary: 'smooth',
+  genital: 'soft', endocrine: 'soft', mucosa: 'soft', serosa: 'fascia',
 };
 const TISSUE_GLSL = `
 varying vec3 vRealPos;
@@ -1229,6 +1304,7 @@ function miss(cur, clickedRec) {
   renderPrompt();
 }
 function skip() {
+  if (exam.on) { const q = exam.qs[exam.i]; if (!exam.busy) { for (const r of q.recs) r.overlay.visible = true; examRecord(false, 'question passée'); } return; }
   if (state.mode === 'study' || !session || !session.current || session.busy) return;
   if (session.phase === 'reveal') { clearQuizVisuals(); nextItem(); return; }
   session.attempts++; session.streak = 0;
@@ -1392,6 +1468,7 @@ canvas.addEventListener('pointerup', (e) => {
   if (!p) return;
   if (p.ctx) { toast(CONTEXT_NOTE[p.ctx.kind] || sys.outside || 'Ça ne fait pas partie de ce système.'); return; }
   const rec = p.rec;
+  if (exam.on) { if (e.shiftKey || state.peel) hideBone(rec); else examPick(rec); return; }
   if (rec.sys && rec.sys !== sys) {   // a structure of a layer (Study or review only): its fiche, nothing else
     if (e.shiftKey || state.peel) hideBone(rec); else openInfo(rec);
     return;
@@ -1432,6 +1509,8 @@ const KIND_LABEL = {
   grey: 'substance grise', sulcus: 'sillon', nucleus: 'noyau', white: 'substance blanche', ventricle: 'cavité ventriculaire', meninge: 'méninge',
   nerve: 'nerf', ganglion: 'ganglion', sense: 'organe des sens', artery: 'artère', vein: 'veine', pulmart: 'artère pulmonaire', pulmvein: 'veine pulmonaire',
   heart: 'cœur', valve: 'valve', node: 'nœud lymphatique', organ: 'organe lymphoïde', duct: 'conduit ou tronc lymphatique', collector: 'collecteurs lymphatiques',
+  gut: 'tube digestif', liver: 'foie', gland: 'glande ou conduit glandulaire', bile: 'voie biliaire', lung: 'poumon', airway: 'voie aérienne', kidney: 'rein',
+  urinary: 'voie urinaire', genital: 'organe génital', endocrine: 'glande endocrine', mucosa: 'muqueuse', serosa: 'séreuse',
 };
 const descCache = {};
 function loadDesc(s) {
@@ -1973,7 +2052,7 @@ $('homeLink').addEventListener('click', (e) => {
   guardTest('Quitter cette page', () => { location.href = href; });
 });
 function renderSegs() {
-  for (const [id, val] of [['modeSeg', state.mode], ['setSeg', state.set], ['hintSeg', state.hints ? 'on' : 'off']]) {
+  for (const [id, val] of [['modeSeg', exam.on ? 'exam' : state.mode], ['setSeg', state.set], ['hintSeg', state.hints ? 'on' : 'off']]) {
     $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === val)));
   }
   const hints = {
@@ -2053,12 +2132,14 @@ function renderBest() {
   el.innerHTML = `Record ici : <b>${b.score}/${b.total}</b> en <b>${fmtTime(b.ms)}</b>`;
 }
 function setMode(m, restart = true) {
+  endExam();
   state.mode = m; store.set('mode', m);
   applyVisibility();
   renderSegs(); renderBest(); resize();
   if (restart) startSession();
 }
 function setSection(sec, frame = true) {
+  endExam();
   state.section = sec; sstore.set('section', sec);
   state.view = 'all'; state.viewSide = 'both'; renderZoom();
   applyVisibility(); renderRail(); renderBest();
@@ -2075,7 +2156,9 @@ function setHints(on) {
 }
 $('hintSeg').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (v) setHints(v === 'on'); });
 $('modeSeg').addEventListener('click', (e) => {
-  const v = e.target.closest('button')?.dataset.v; if (!v || v === state.mode) return;
+  const v = e.target.closest('button')?.dataset.v; if (!v) return;
+  if (v === 'exam') { guardTest('Lancer un examen', () => { setSheet(null); openMenu('exam'); }); return; }
+  if (v === state.mode && !exam.on) return;
   guardTest(`Passer en mode ${{ study: 'Révision', practice: 'Entraînement', test: 'Test' }[v]}`, () => setMode(v));
 });
 $('setSeg').addEventListener('click', (e) => {
@@ -2121,6 +2204,8 @@ window.addEventListener('keydown', (e) => {
   else if (/^[0-9]$/.test(k)) zoomKey((Number(k) + 9) % 10);
   else if (k === 'c') setClean(!state.clean);
   else if (k === 'r') frameSection();
+  else if (k === 'escape' && !$('menu').hidden) closeMenu();
+  else if (k === 'escape' && !$('examEnd').hidden) $('examEnd').hidden = true;
   else if (k === 'escape' && !$('info').hidden) closeInfo();
   else if (k === 'escape') {
     const sheetOpen = /(^|\s)(sheet|view)-open(\s|$)/.test(document.body.className);
@@ -2250,14 +2335,226 @@ function tick(now) {
     }
     r.mat.emissive.copy(tmpC);
   }
-  for (const r of layerRecs) r.mat.emissive.copy(r === hoverRec ? tmpC.copy(COL.scan).multiplyScalar(0.16) : tmpC.setRGB(0, 0, 0));
-  if (session && !session.end && state.mode !== 'study' && !pendingConfirm) $('sTime').textContent = fmtTime(now - session.start);
+  for (const r of layerRecs) {
+    if (r === hoverRec) tmpC.copy(COL.scan).multiplyScalar(0.16); else tmpC.setRGB(0, 0, 0);
+    if (r.flash) { const k = (now - r.flash.t0) / r.flash.dur; if (k >= 1) r.flash = null; else tmpC.lerp(r.flash.color, 0.85 * (1 - k)); }
+    r.mat.emissive.copy(tmpC);
+  }
+  if (exam.on && !pendingConfirm) $('sTime').textContent = fmtTime(now - exam.t0);
+  else if (session && !session.end && state.mode !== 'study' && !pendingConfirm) $('sTime').textContent = fmtTime(now - session.start);
   camera.updateMatrixWorld();
   updateCallout();
   updateOccluders();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
+
+/* ---------------- start menu: whole body, by apparatus, by region ---------------- */
+// A preset sets the studied system and its quiz section, the systems shown with it (layers and their look), the zoom,
+// and the scope of an exam there: { system: [sections] }, a section being 'all', 'region' or 'region/sub'.
+const PRESETS = [
+  ...SYSTEMS.map(s => ({ key: 'all_' + s.key, group: 'body', label: s.label, note: s.sub, system: s.key, section: 'all', zoom: 'all',
+    layers: s.key === 'bones' ? {} : { bones: 'ghost' }, scope: { [s.key]: ['all'] } })),
+  { key: 'digest', group: 'app', label: 'Appareil digestif', note: 'Bouche, pharynx, estomac, intestins, foie, pancréas', system: 'organs', section: 'digest', zoom: 'all', layers: { bones: 'ghost' }, scope: { organs: ['digest'], vessels: ['aorta/digest', 'trunkvein/portal'] } },
+  { key: 'resp', group: 'app', label: 'Appareil respiratoire', note: 'Voies aériennes, bronches, poumons', system: 'organs', section: 'resp', zoom: 'ribcage', layers: { bones: 'ghost' }, scope: { organs: ['resp'], vessels: ['pulm'] } },
+  { key: 'uro', group: 'app', label: 'Appareil urinaire', note: 'Reins, uretères, vessie, urètre', system: 'organs', section: 'uro', zoom: 'pelvis', layers: { bones: 'ghost' }, scope: { organs: ['uro'], vessels: ['aorta/abdo'] } },
+  { key: 'genital', group: 'app', label: 'Appareil génital', note: 'Modèle masculin', system: 'organs', section: 'genital', zoom: 'pelvis', layers: { bones: 'ghost' }, scope: { organs: ['genital'] } },
+  { key: 'endo', group: 'app', label: 'Glandes endocrines', note: 'Hypophyse, thyroïde, surrénales…', system: 'organs', section: 'endo', zoom: 'all', layers: { bones: 'ghost' }, scope: { organs: ['endo'] } },
+  { key: 'loco', group: 'app', label: 'Appareil locomoteur', note: 'Os et muscles', system: 'muscles', section: 'all', zoom: 'all', layers: { bones: 'ghost' }, scope: { bones: ['all'], muscles: ['all'] } },
+  { key: 'cardio', group: 'app', label: 'Appareil cardiovasculaire', note: 'Cœur, artères, veines', system: 'vessels', section: 'all', zoom: 'all', layers: { bones: 'ghost' }, scope: { vessels: ['all'] } },
+  { key: 'neuro', group: 'app', label: 'Système nerveux', note: 'Encéphale, moelle, nerfs', system: 'nerves', section: 'all', zoom: 'all', layers: { bones: 'ghost' }, scope: { nerves: ['all'] } },
+  { key: 'lympho', group: 'app', label: 'Système lymphatique', note: 'Nœuds, conduits, collecteurs', system: 'lymph', section: 'all', zoom: 'all', layers: { bones: 'ghost' }, scope: { lymph: ['all'] } },
+  { key: 'r_hn', group: 'reg', label: 'Tête et cou', note: 'Tous les systèmes', system: 'muscles', section: 'head', zoom: 'head', layers: { bones: 'ghost', vessels: 'solid', nerves: 'solid', organs: 'solid' },
+    scope: { bones: ['head'], muscles: ['head', 'neck'], nerves: ['cranial', 'sense'], vessels: ['headart', 'headvein'], organs: ['digest/mouth', 'digest/pharynx', 'endo'], lymph: ['hn'] } },
+  { key: 'r_th', group: 'reg', label: 'Thorax', note: 'Tous les systèmes', system: 'muscles', section: 'trunk/thorax', zoom: 'ribcage', layers: { bones: 'ghost', vessels: 'solid', organs: 'solid', nerves: 'solid' },
+    scope: { bones: ['torso/ribcage'], muscles: ['trunk/thorax'], vessels: ['heart', 'pulm', 'aorta/thor', 'trunkvein/vcs'], organs: ['resp'], nerves: ['trunk'], lymph: ['thorax', 'ducts'] } },
+  { key: 'r_ab', group: 'reg', label: 'Abdomen et bassin', note: 'Tous les systèmes', system: 'organs', section: 'all', zoom: 'pelvis', layers: { bones: 'ghost', vessels: 'solid' },
+    scope: { organs: ['digest/gut', 'digest/glands', 'uro', 'genital'], vessels: ['aorta/abdo', 'aorta/digest', 'aorta/pelvis', 'trunkvein/vci', 'trunkvein/portal'], muscles: ['trunk/abdomen', 'trunk/pelvis'], bones: ['torso/pelvis'], lymph: ['abdo', 'pelvis'] } },
+  { key: 'r_ul', group: 'reg', label: 'Membre supérieur', note: 'Tous les systèmes', system: 'muscles', section: 'ul', zoom: 'arms', layers: { bones: 'ghost', vessels: 'solid', nerves: 'solid' },
+    scope: { bones: ['arm', 'hand'], muscles: ['ul'], nerves: ['ul'], vessels: ['ulart', 'ulvein'], lymph: ['ul'] } },
+  { key: 'r_ll', group: 'reg', label: 'Membre inférieur', note: 'Tous les systèmes', system: 'muscles', section: 'll', zoom: 'legs', layers: { bones: 'ghost', vessels: 'solid', nerves: 'solid' },
+    scope: { bones: ['leg', 'foot'], muscles: ['ll'], nerves: ['ll'], vessels: ['llart', 'llvein'], lymph: ['ll'] } },
+];
+const PRESET = Object.fromEntries(PRESETS.map(p => [p.key, p]));
+let menuMode = 'study';
+function renderMenu() {
+  $('menuMode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === menuMode)));
+  $('menuHint').textContent = menuMode === 'exam'
+    ? 'Choisissez une zone : 20 questions notées, tous systèmes de la zone mélangés. « Montrer » : touchez la structure nommée. « Situer » : dites où elle est par rapport à une autre.'
+    : 'Choisissez ce que vous voulez voir. Vous pourrez ensuite réviser, vous entraîner ou faire un test, et rouvrir ce menu à tout moment.';
+  const best = store.get('examBest', {});
+  for (const [id, g] of [['menuBody', 'body'], ['menuApp', 'app'], ['menuReg', 'reg']]) {
+    $(id).replaceChildren(...PRESETS.filter(p => p.group === g).map((p) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'mcard'; b.dataset.preset = p.key;
+      const t = document.createElement('b'); t.textContent = p.label;
+      const n = document.createElement('small'); n.textContent = p.note;
+      b.append(t, n);
+      if (menuMode === 'exam' && best[p.key]) { const e = document.createElement('em'); e.textContent = `Record : ${best[p.key].note}/20`; b.append(e); }
+      return b;
+    }));
+  }
+}
+function openMenu(mode) { if (mode) menuMode = mode; renderMenu(); $('menu').hidden = false; }
+function closeMenu() { $('menu').hidden = true; }
+$('menuMode').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (v) { menuMode = v; renderMenu(); } });
+$('menuClose').addEventListener('click', closeMenu);
+$('menuBtn').addEventListener('click', () => guardTest('Ouvrir le menu', () => openMenu()));
+['menuBody', 'menuApp', 'menuReg'].forEach(id => $(id).addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-preset]'); if (!b) return;
+  closeMenu(); applyPreset(PRESET[b.dataset.preset], menuMode);
+}));
+async function applyPreset(p, mode = 'study') {
+  endExam();
+  if (!(await openSystem(SYS[p.system]))) return;
+  if (sys.key !== p.system) await setSystem(p.system);
+  // an exam shows every system of its scope, solid and clickable; browsing uses the preset's own layers
+  const lay = mode === 'exam' ? Object.fromEntries(Object.keys(p.scope).filter(k => k !== p.system).map(k => [k, 'solid'])) : { ...p.layers };
+  if (mode === 'exam' && !(p.system === 'bones' || 'bones' in lay)) lay.bones = 'ghost';   // the skeleton as a landmark
+  state.layers = new Set(Object.keys(lay)); Object.assign(state.looks, lay);
+  store.set('layers', [...state.layers]); store.set('layerLooks', state.looks);
+  setSection(validSection(p.section) ? p.section : 'all', false);
+  renderLayers();
+  if (mode === 'exam') { if (state.mode === 'test' || state.mode === 'practice') setMode('study', false); await startExam(p); }
+  else { setMode('study', false); startSession(); loadLayers(); }
+  setView(ZOOM[p.zoom] ? p.zoom : 'all', 'both');
+  toast(`${mode === 'exam' ? 'Examen' : 'Vue'} : ${p.label}`);
+}
+
+/* ---------------- exam: 20 marked questions on a zone, every system of it mixed ---------------- */
+const exam = { on: false };
+// 'Show' questions: the essential groups of each system of the scope
+function examShows(p) {
+  const out = [];
+  for (const [k, secs] of Object.entries(p.scope)) {
+    const s = SYS[k], R = RT[k]; if (!s || !R || !R.loaded) continue;
+    const apart = new Set(s.data.regions.filter(r => r.separate).map(r => r.key));
+    const match = (o) => secs.some(sec => { if (sec === 'all') return !apart.has(o.region); const [r, sb] = sec.split('/'); return o.region === r && (!sb || o.sub === sb); });
+    for (const g of Object.values(s.data.groups)) {
+      if (!match(g)) continue;
+      const recs = g.members.map(id => R.recs.get(id)).filter(Boolean);
+      if (recs.length) out.push({ type: 'show', sys: s, name: label(g), accept: new Set(recs.map(r => r.id)), recs });
+    }
+  }
+  return out;
+}
+const LIMB = new Set(['arm', 'hand', 'leg', 'foot']);
+// 'Place' questions: where structure A lies relative to a nearby structure B, read from the model itself. Asked only when
+// one direction clearly dominates (at least 2.5 cm, and 1.6 times the other directions), so the answer is never borderline.
+function placeQuestion(pool) {
+  for (let t = 0; t < 400; t++) {
+    const A = pool[Math.floor(Math.random() * pool.length)];
+    if (A.radius > 0.15) continue;
+    const ga = A.data.group || A.id, za = A.data.zr || A.data.region;
+    // a nearby structure of the same body zone (arm, hand, thorax…), so the pair makes anatomical sense
+    const near = pool.filter(r => r !== A && (r.data.group || r.id) !== ga && r.radius < 0.15 && (r.data.zr || r.data.region) === za && r.center.distanceTo(A.center) < 0.15);
+    if (!near.length) continue;
+    const B = near[Math.floor(Math.random() * near.length)], d = B.center.clone().sub(A.center);
+    const sameSide = !A.data.side || !B.data.side || A.data.side === B.data.side;
+    const axes = [['v', Math.abs(d.y)], ['ap', Math.abs(d.z)]];
+    if (sameSide && A.data.side) axes.push(['ml', Math.abs(Math.abs(B.center.x) - Math.abs(A.center.x))]);
+    axes.sort((a, b) => b[1] - a[1]);
+    if (axes[0][1] < 0.025 || axes[0][1] < 1.6 * (axes[1] ? axes[1][1] : 0)) continue;
+    const limb = LIMB.has(A.data.zr || A.data.region) && LIMB.has(B.data.zr || B.data.region), ax = axes[0][0];
+    const opts = ax === 'v' ? (limb ? ['Proximal (plus haut)', 'Distal (plus bas)'] : ['Supérieur (au-dessus)', 'Inférieur (au-dessous)'])
+      : ax === 'ap' ? ['Antérieur (en avant)', 'Postérieur (en arrière)'] : ['Médial (plus près de la ligne médiane)', 'Latéral (plus en dehors)'];
+    const correct = ax === 'v' ? (A.center.y > B.center.y ? 0 : 1) : ax === 'ap' ? (A.center.z > B.center.z ? 0 : 1) : (Math.abs(A.center.x) < Math.abs(B.center.x) ? 0 : 1);
+    return { type: 'place', A, B, opts, correct, recs: [A, B] };
+  }
+  return null;
+}
+async function startExam(p) {
+  for (const k of Object.keys(p.scope)) if (SYS[k] && !(await openSystem(SYS[k]))) return;
+  applyVisibility();
+  const shows = shuffle(examShows(p)), pool = shows.flatMap(q => q.recs);
+  const places = [];
+  for (let i = 0; i < 40 && places.length < 8 && pool.length > 3; i++) { const q = placeQuestion(pool); if (q && !places.some(x => x.A === q.A && x.B === q.B)) places.push(q); }
+  const qs = shuffle([...shows.slice(0, 20 - places.length), ...places]);
+  if (!qs.length) { toast('Pas assez de structures dans cette zone pour un examen.', 'bad'); return; }
+  closeInfo(); clearQuizVisuals(); clearReview(); session = null; study = null;
+  Object.assign(exam, { on: true, preset: p, qs, i: 0, score: 0, log: [], t0: performance.now(), busy: false });
+  document.body.classList.add('exam'); renderSegs(); renderExam();
+}
+function renderExam() {
+  const q = exam.qs[exam.i];
+  $('pEyebrow').textContent = `Examen · ${exam.preset.label} · question ${exam.i + 1} sur ${exam.qs.length}`;
+  $('pBarWrap').hidden = false; $('review').hidden = true; setTip('');
+  $('pBar').style.width = (100 * exam.i / exam.qs.length).toFixed(1) + '%';
+  $('prompt').classList.remove('is-reveal');
+  const box = $('examAnswers');
+  if (q.type === 'show') {
+    $('pName').textContent = q.name;
+    $('pMeta').textContent = `Montrez cette structure (${q.sys.label.toLowerCase()}) en la touchant sur le modèle`;
+    box.hidden = true; box.replaceChildren();
+  } else {
+    $('pName').textContent = label(q.A.data);
+    $('pMeta').textContent = `Par rapport à « ${lowerFirst(label(q.B.data))} », cette structure est :`;
+    box.replaceChildren(...q.opts.map((o, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = o; b.dataset.i = i; return b; }));
+    box.hidden = false;
+  }
+  $('skipBtn').hidden = false; $('skipBtn').textContent = 'Passer';
+  $('stats').hidden = false; $('sAcc').textContent = `${exam.score} / ${exam.i}`; $('sStreak').textContent = exam.qs.length - exam.i;
+  fitName();
+}
+$('examAnswers').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-i]'); const q = exam.on && exam.qs[exam.i];
+  if (!b || !q || q.type !== 'place' || exam.busy) return;
+  const i = +b.dataset.i, ok = i === q.correct;
+  $('examAnswers').querySelectorAll('button').forEach((x, j) => { if (j === q.correct) x.classList.add('right'); else if (j === i) x.classList.add('wrong'); });
+  for (const r of q.recs) r.overlay.visible = true;   // show where both are, after answering
+  examRecord(ok, ok ? '' : `vous avez répondu : ${lowerFirst(q.opts[i])}`);
+});
+function examPick(rec) {
+  const q = exam.qs[exam.i];
+  if (!exam.on || exam.busy || q.type !== 'show') return;
+  const ok = q.accept.has(rec.id);
+  flash(rec, ok ? 'ok' : 'bad');
+  if (!ok) for (const r of q.recs) r.overlay.visible = true;   // show the right one
+  examRecord(ok, ok ? '' : `vous avez touché : ${lowerFirst(label(rec.data))}`);
+}
+function examRecord(ok, detail) {
+  const q = exam.qs[exam.i];
+  exam.busy = true; if (ok) exam.score++;
+  exam.log.push({ q, ok, detail });
+  pulsePrompt(ok ? 'ok' : 'bad');
+  $('sAcc').textContent = `${exam.score} / ${exam.i + 1}`;
+  setTimeout(() => {
+    for (const r of q.recs) if (info.glow !== r) r.overlay.visible = false;
+    if (!exam.on) return;
+    exam.busy = false; exam.i++;
+    if (exam.i >= exam.qs.length) finishExam(); else renderExam();
+  }, ok ? 600 : q.type === 'place' ? 1600 : 1500);
+}
+const examQuestionText = (q) => q.type === 'show' ? `Montrer : ${q.name}` : `Situer : ${label(q.A.data)}, par rapport à ${lowerFirst(label(q.B.data))}`;
+function finishExam() {
+  const ms = performance.now() - exam.t0, note = Math.round(200 * exam.score / exam.qs.length) / 10;
+  const best = store.get('examBest', {}), prev = best[exam.preset.key];
+  if (!prev || note > prev.note || (note === prev.note && ms < prev.ms)) { best[exam.preset.key] = { note, ms }; store.set('examBest', best); }
+  $('examNote').textContent = `${String(note).replace('.', ',')} / 20`;
+  $('examMeta').textContent = `${exam.preset.label} · ${exam.score} bonne${exam.score > 1 ? 's' : ''} réponse${exam.score > 1 ? 's' : ''} sur ${exam.qs.length} · ${fmtTime(ms)} · record : ${String(best[exam.preset.key].note).replace('.', ',')}/20`;
+  $('examLog').replaceChildren(...exam.log.map(({ q, ok, detail }) => {
+    const li = document.createElement('li'); li.className = ok ? 'ok' : 'bad';
+    li.append(`${ok ? '✓' : '✗'} ${examQuestionText(q)}`);
+    if (!ok) {
+      const sm = document.createElement('small');
+      sm.textContent = ' — ' + (q.type === 'place' ? `réponse : ${lowerFirst(q.opts[q.correct])}` : 'à revoir') + (detail ? ` (${detail})` : '');
+      li.append(sm);
+    }
+    return li;
+  }));
+  const p = exam.preset; endExam(); exam.last = p;
+  $('examEnd').hidden = false;
+}
+// leaving an exam (finished, or the person changed system, section or mode): back to the normal prompt
+function endExam() {
+  if (!exam.on) return;
+  exam.on = false; exam.busy = false;
+  for (const q of exam.qs || []) for (const r of q.recs || []) if (info.glow !== r) r.overlay.visible = false;
+  document.body.classList.remove('exam'); $('examAnswers').hidden = true; $('examAnswers').replaceChildren();
+  renderSegs(); applyVisibility();
+}
+$('examAgain').addEventListener('click', () => { $('examEnd').hidden = true; if (exam.last) applyPreset(exam.last, 'exam'); });
+$('examStudy').addEventListener('click', () => { $('examEnd').hidden = true; if (exam.last) applyPreset(exam.last, 'study'); });
+$('examMenu').addEventListener('click', () => { $('examEnd').hidden = true; openMenu('exam'); });
 
 /* ---------------- boot ---------------- */
 renderWords(); renderSystems(); renderLayers(); renderSegs(); renderRail(); renderBest(); renderZoom(); resize();
@@ -2337,6 +2634,7 @@ async function setSystem(key) {
   const s = SYS[key];
   if (!s || s.soon || s === sys) return;
   if (!(await openSystem(s))) return;
+  endExam();
   clearQuizVisuals(); clearReview(); setHover(null);
   session = null; study = null;
   sys = s; W = s.words; DATA = s.data; indexData();
@@ -2363,7 +2661,7 @@ function onBonesReady(R) {
   if (location.hash === '#selftest') {
     window.__the206.t = { THREE, bones, state, camera, controls, pickAt, applyVisibility, setSection, setXray, setMode, startSession,
       frameSection, getSession: () => session, getStudy: () => study, setHints, setView, zoomKey, studyStep, renderPrompt, cancelFly, buildItems, countFor, layout,
-      ctxPieces, CONTEXT_CLICKABLE, SYSTEMS, SYS, RT, setSystem, loadSystem, renderSystems, renderLayers, setLayer, getBones: () => bones, getSys: () => sys, answer, skip, studyPick, renderSearch, quizIds, getReview: () => review, openInfo, closeInfo, getInfo: () => info, reviewPick, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
+      ctxPieces, CONTEXT_CLICKABLE, SYSTEMS, SYS, RT, setSystem, loadSystem, renderSystems, renderLayers, setLayer, getBones: () => bones, getSys: () => sys, answer, skip, studyPick, renderSearch, quizIds, getReview: () => review, openInfo, closeInfo, getInfo: () => info, reviewPick, PRESET, applyPreset, openMenu, getExam: () => exam, examPick, placeQuestion, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
       flyNow: () => { if (!fly) return; controls.target.copy(fly.t1); sphNow.set(fly.r1, fly.ph1, fly.th0 + fly.dth).makeSafe(); camera.position.setFromSpherical(sphNow).add(controls.target); fly = null; controls.update(); camera.updateMatrixWorld(); } };
   }
   applyVisibility();
@@ -2378,6 +2676,7 @@ function onBonesReady(R) {
   loadDesc(SYS.bones);
   const saved = SYS[store.get('system', 'bones')];
   if (saved && saved !== sys && !saved.soon) setSystem(saved.key);
+  if (location.hash !== '#selftest') openMenu();   // the start menu (tests drive the page directly)
 }
 function onModelError(err) {
   console.error(err);

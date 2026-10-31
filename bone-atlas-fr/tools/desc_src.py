@@ -30,7 +30,7 @@ strip_side = lambda n: re.sub(r'(,\s*côté (gauche|droit)| (gauche|droite|droit
 bones_za = json.load(open(f'{S}/za/bones_za.json'))
 html = open(f'{DATA}/../index.html', encoding='utf-8').read()
 systems = {'bones': json.loads(re.search(r'const BONES_DATA = (\{.*?\});\n', html).group(1))}
-for k in ('muscles', 'nerves', 'vessels', 'lymph'): systems[k] = json.load(open(f'{DATA}/{k}.json'))
+for k in ('muscles', 'nerves', 'vessels', 'lymph', 'organs'): systems[k] = json.load(open(f'{DATA}/{k}.json'))
 os.makedirs(f'{S}/desc', exist_ok=True)
 for k, d in systems.items():
     regions = {r['key']: r for r in d['regions']}

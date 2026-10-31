@@ -3,7 +3,7 @@
 # Usage : python3 -I desc_build.py <travail> <dossier data>
 import json, os, sys, re
 S, DATA = sys.argv[1], sys.argv[2]
-for k in ('bones', 'muscles', 'nerves', 'vessels', 'lymph'):
+for k in ('bones', 'muscles', 'nerves', 'vessels', 'lymph', 'organs'):
     src = json.load(open(f'{S}/desc/{k}.src.json'))
     fr = {}
     for f in sorted(os.listdir(f'{S}/desc')):
