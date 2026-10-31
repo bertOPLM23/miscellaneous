@@ -370,11 +370,11 @@ body.clean #cleanExit { display: inline-block; opacity: 0.55; }
 <link rel="canonical" href="https://samplesize1.com/tools/bone-atlas/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Atlas anatomique">
-<meta property="og:description" content="Apprenez tous les os du corps humain sur un squelette en 3D. Révision, entraînement et tests chronométrés par région, pour les 206 os. Gratuit, par SampleSize_1.">
+<meta property="og:description" content="Apprenez l’anatomie du corps humain en 3D : les 206 os et les muscles, tendons, fascias, bourses et gaines. Révision, entraînement et tests chronométrés par région. Gratuit, par SampleSize_1.">
 <meta property="og:image" content="https://samplesize1.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <title>Atlas anatomique</title>
-<meta name="description" content="Apprenez tous les os du corps humain sur un squelette en 3D. Révision, entraînement et tests chronométrés par région, pour les 206 os. Gratuit, par SampleSize_1.">
+<meta name="description" content="Apprenez l’anatomie du corps humain en 3D : les 206 os et les muscles, tendons, fascias, bourses et gaines. Révision, entraînement et tests chronométrés par région. Gratuit, par SampleSize_1.">
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Montserrat:wght@800&amp;display=swap">
@@ -594,15 +594,16 @@ async function loadLib() {
   } catch (e) {
     console.warn('Local three.js bundle failed to load, trying the CDN.', e);
     const THREE = await import('three');
-    const [{ GLTFLoader }, { OrbitControls }, { RoomEnvironment }] = await Promise.all([
+    const [{ GLTFLoader }, { OrbitControls }, { RoomEnvironment }, { MeshoptDecoder }] = await Promise.all([
       import('three/addons/loaders/GLTFLoader.js'),
       import('three/addons/controls/OrbitControls.js'),
       import('three/addons/environments/RoomEnvironment.js'),
+      import('three/addons/libs/meshopt_decoder.module.js'),
     ]);
-    return { THREE, GLTFLoader, OrbitControls, RoomEnvironment };
+    return { THREE, GLTFLoader, OrbitControls, RoomEnvironment, MeshoptDecoder };
   }
 }
-const { THREE, GLTFLoader, OrbitControls, RoomEnvironment } = await loadLib().catch((err) => {
+const { THREE, GLTFLoader, OrbitControls, RoomEnvironment, MeshoptDecoder } = await loadLib().catch((err) => {
   document.getElementById('loadMsg').textContent = 'Le moteur 3D ne s’est pas chargé. Un bloqueur de contenu, un filtre DNS ou un réglage de confidentialité strict bloque peut-être les scripts de cette page.';
   window.__the206Fatal = true;
   throw err;
@@ -625,6 +626,9 @@ const $ = (id) => document.getElementById(id);
 // A structure may carry zr/zs: the camera zone (same keys as the bone regions) used by the 1–0 zooms and voice,
 // when its quiz region differs from where it sits on the body. Bones have none: their region is their zone.
 // Systems other than bones load (data + model) the first time they are opened or shown as a layer.
+const MUSCLES_BYTES = 1991916;   // size of muscles.glb, for the progress bar
+// colours of the non-bone structures, by kind
+const KIND_COLOR = { muscle: 0xb5524b, tendon: 0xe2dccb, fascia: 0xc9c0ae, bourse: 0x8fbcd4, gaine: 0xa9c7a0 };
 const WORDS = {
   bone: { one: 'os', a: 'un os', the: 'l’os', many: 'os', fem: false, pro: 'le' },
   structure: { one: 'structure', a: 'une structure', the: 'la structure', many: 'structures', fem: true, pro: 'la' },
@@ -639,7 +643,16 @@ const SYSTEMS = [
     hintsOff: 'Noms techniques uniquement, comme « Patella » et « Phalange distale du 5e orteil ». Les doigts et orteils sont numérotés à partir du pouce et du gros orteil (1er).',
     outside: 'Ça ne fait pas partie des 206 os.',
   },
-  { key: 'muscles', label: 'Muscles', words: WORDS.structure, soon: true },
+  {
+    key: 'muscles', label: 'Muscles', words: WORDS.structure, dataUrl: 'data/muscles.json',
+    url: 'muscles.glb', bytes: MUSCLES_BYTES, loadName: 'les muscles',
+    sub: 'Muscles, tendons, fascias, bourses et gaines', count: 669, ghost: 0.18,
+    color: (d) => KIND_COLOR[d.kind] || KIND_COLOR.muscle,
+    sets: { names: 'Essentiels', all: 'Toutes' }, setTitle: 'Structures', search: 'Trouver une structure', placeholder: 'ex. : deltoïde, couturier, SCM',
+    hintsOn: 'Les noms incluent l’ancien nom ou le nom usuel entre parenthèses, comme « Muscle sartorius (couturier) ».',
+    hintsOff: 'Terminologie anatomique officielle uniquement, comme « Muscle sartorius » et « Muscle long fibulaire ».',
+    outside: 'Ça ne fait pas partie de ce système.',
+  },
   { key: 'nerves', label: 'Nerveux', words: WORDS.structure, soon: true },
   { key: 'vessels', label: 'Sanguin', words: WORDS.structure, soon: true },
   { key: 'lymph', label: 'Lymphatique', words: WORDS.structure, soon: true },
@@ -668,8 +681,10 @@ function storeFor(s) {
 let sstore = storeFor(sys);
 
 /* ---------------- data lookups ---------------- */
-let REGION, SUB, BONE;
+let REGION, SUB, BONE, SEPARATE;
 function indexData() {
+  // regions quizzed only on their own, never as part of "Corps entier" (fascias and bursae, which would cover the muscles)
+  SEPARATE = new Set(DATA.regions.filter(r => r.separate).map(r => r.key));
   REGION = Object.fromEntries(DATA.regions.map(r => [r.key, r]));
   SUB = {};
   for (const r of DATA.regions) for (const s of r.subs) SUB[s.key] = { ...s, region: r.key };
@@ -713,7 +728,7 @@ function validSection(sec) {
   return !!REGION[p.region] && (!p.sub || (SUB[p.sub] && SUB[p.sub].region === p.region));
 }
 function inSection(d, sec = state.section) {
-  if (sec === 'all') return true;
+  if (sec === 'all') return !SEPARATE.has(d.region);
   const p = parseSection(sec);
   return d.region === p.region && (!p.sub || d.sub === p.sub);
 }
@@ -726,6 +741,19 @@ function inZone(d, sec) {
 function inSide(d, side) { return side === 'both' || !d.side || d.side === (side === 'left' ? 'L' : 'R'); }
 // Quizzes always cover both sides. Left / right is a view setting (the Side control in the View card).
 function inScope(d, sec = state.section) { return inSection(d, sec); }
+// In the quiz = in the section and part of one of its items. In the short list a structure outside every group (a
+// tarsal plate of the eyelid, a patellar retinaculum) stays on screen as a faint landmark and can't be clicked.
+let quizCache = { key: '', ids: null };
+function quizIds() {
+  const k = `${sys.key}|${state.set}|${state.section}`;
+  if (quizCache.key !== k) {
+    const ids = new Set();
+    for (const it of buildItems()) for (const id of it.accept) ids.add(id);
+    quizCache = { key: k, ids };
+  }
+  return quizCache.ids;
+}
+function inQuiz(d) { return inScope(d) && quizIds().has(d.id); }
 const ZOOMS = [
   { key: 'all', sec: 'all', label: 'Corps entier' },
   { key: 'head', sec: 'head', label: 'Tête', fem: true, lateral: true },
@@ -901,7 +929,8 @@ function lowerFirst(s) { return s.replace(/^([A-Z])(?=[a-z])/, c => c.toLowerCas
 // Hints off: the technical name ("Patella", "5th metacarpal", "distal phalanx of the 5th toe").
 function label(o) { return state.hints ? o.name : (o.tech || o.name); }
 function itemLabel(key) { return label(state.set === 'all' ? BONE[key] : DATA.groups[key]); }
-function nameFor(rec) { return lowerFirst(state.set === 'names' ? label(DATA.groups[rec.data.group]) : label(rec.data)); }
+// in the short list, a structure outside every group (a bursa, a tendon sheath) is named on its own
+function nameFor(rec) { const g = state.set === 'names' && DATA.groups[rec.data.group]; return lowerFirst(label(g || rec.data)); }
 function itemFor(rec, items) { return items.find(it => it.accept.has(rec.id)); }
 
 /* ---------------- highlight (glow through other bones) ---------------- */
@@ -1095,11 +1124,11 @@ function bestKey() { return `${state.mode}|${state.set}|${state.section}|both` +
 function applyVisibility() {
   pickables = []; blockers = []; liveMeshes = [];
   for (const r of bones.values()) {
-    const inQuiz = inScope(r.data), live = inQuiz && inView(r.data);
-    const hidden = state.hidden.has(r.id);
+    const quizzed = inQuiz(r.data), live = quizzed && inView(r.data);
+    const hidden = state.hidden.has(r.id) || (!quizzed && SEPARATE.has(r.data.region));
     const occluding = occ.recs.has(r);
     r.mesh.visible = !hidden;
-    const opacity = !live ? (inQuiz ? 0.03 : 0.07) : occluding ? 0.16 : (state.xray ? 0.32 : 1);
+    const opacity = !live ? (quizzed ? 0.03 : 0.07) : occluding ? 0.16 : (state.xray ? 0.32 : 1);
     const transparent = opacity < 1;
     if (r.mat.transparent !== transparent) { r.mat.transparent = transparent; r.mat.needsUpdate = true; }
     r.mat.opacity = opacity; r.mat.depthWrite = !transparent;
@@ -1205,7 +1234,11 @@ function renderSearch() {
   list.replaceChildren(...found.map(b => {
     const li = document.createElement('li'); const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = label(b);
     btn.addEventListener('click', () => {
-      if (!inScope(b)) { setSection(`${b.region}/${b.sub}`, false); startSession(); }
+      if (!inQuiz(b)) {   // outside the current quiz: open its region, and the full list if it's in no group
+        if (!inScope(b)) setSection(`${b.region}/${b.sub}`, false);
+        if (!quizIds().has(b.id)) { state.set = 'all'; sstore.set('set', 'all'); renderSegs(); renderRail(); renderBest(); }
+        applyVisibility(); startSession();
+      }
       const rec = bones.get(b.id); if (!rec) return;
       studyPick(rec);
       showBones([rec], rec);
@@ -1249,11 +1282,11 @@ const VIEW_DIRS = {
 };
 function sectionDir(sec = state.section) {
   const p = parseSection(sec);
-  return p.region === 'foot' ? VIEW_DIRS.top : VIEW_DIRS.front;   // look down on the top of the foot
+  return p.region === 'foot' || p.sub === 'foot' ? VIEW_DIRS.top : VIEW_DIRS.front;   // look down on the top of the foot
 }
 function scopeSphere(key = state.view, side = state.viewSide) {
   const box = new THREE.Box3();
-  for (const r of bones.values()) if (inScope(r.data) && inView(r.data, key, side)) { box.expandByPoint(r.center.clone().addScalar(r.radius)); box.expandByPoint(r.center.clone().addScalar(-r.radius)); }
+  for (const r of bones.values()) if (inQuiz(r.data) && inView(r.data, key, side)) { box.expandByPoint(r.center.clone().addScalar(r.radius)); box.expandByPoint(r.center.clone().addScalar(-r.radius)); }
   if (box.isEmpty()) box.copy(modelBox);
   return box.getBoundingSphere(new THREE.Sphere());
 }
@@ -1278,7 +1311,7 @@ function setView(key, side, frame = true) {
 function ensureInView(ids) {
   if (zoomed() && [...ids].some(id => BONE[id] && !inView(BONE[id]))) setView('all', 'both', false);
 }
-function zoomCount(key, side) { return DATA.bones.filter(b => inScope(b) && inView(b, key, side)).length; }
+function zoomCount(key, side) { return DATA.bones.filter(b => inQuiz(b) && inView(b, key, side)).length; }
 const narrow = () => window.innerWidth <= 900;
 function setSheet(which) {   // phones: 'view', 'settings' or null (only one bottom sheet open at a time)
   document.body.classList.toggle('view-open', which === 'view');
@@ -1516,7 +1549,7 @@ function standardView(members, focus) {
     if (pick) side = sideOf(pick);
   }
   if (!zoomCount(z.key, side)) side = 'both';
-  const turn = members.map(r => VIEW_TURN[r.id]).find(Boolean) || null;
+  const turn = members.map(r => r.data.turn || VIEW_TURN[r.id]).find(Boolean) || null;   // e.g. back muscles: seen from behind
   return { key: z.key, side, turn };
 }
 function onScreen(members, focus) {
@@ -1955,6 +1988,7 @@ function tick(now) {
 /* ---------------- boot ---------------- */
 renderWords(); renderSystems(); renderLayers(); renderSegs(); renderRail(); renderBest(); renderZoom(); resize();
 const loader = new GLTFLoader();
+loader.setMeshoptDecoder(MeshoptDecoder);   // the models of the other systems are meshopt-compressed
 async function fetchModel(url, onProgress, size) {
   const res = await fetch(url);
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2054,7 +2088,7 @@ function onBonesReady(R) {
   if (location.hash === '#selftest') {
     window.__the206.t = { THREE, bones, state, camera, controls, pickAt, applyVisibility, setSection, setXray, setMode, startSession,
       frameSection, getSession: () => session, getStudy: () => study, setHints, setView, zoomKey, studyStep, renderPrompt, cancelFly, buildItems, countFor, layout,
-      ctxPieces, CONTEXT_CLICKABLE, SYSTEMS, SYS, RT, setSystem, loadSystem, renderSystems, renderLayers, setLayer, getBones: () => bones, getSys: () => sys, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
+      ctxPieces, CONTEXT_CLICKABLE, SYSTEMS, SYS, RT, setSystem, loadSystem, renderSystems, renderLayers, setLayer, getBones: () => bones, getSys: () => sys, answer, skip, studyPick, renderSearch, quizIds, getReview: () => review, projectPx, parseVoice, setVoice, voice, standardView, areaFor,
       flyNow: () => { if (!fly) return; controls.target.copy(fly.t1); sphNow.set(fly.r1, fly.ph1, fly.th0 + fly.dth).makeSafe(); camera.position.setFromSpherical(sphNow).add(controls.target); fly = null; controls.update(); camera.updateMatrixWorld(); } };
   }
   applyVisibility();
